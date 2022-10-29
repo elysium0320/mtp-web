@@ -1,0 +1,577 @@
+{% extends 'layouts/base.html' %}
+{% load static %}
+{% block app_image %}active{% endblock %}
+{% block app_style %}<link rel="stylesheet" href="{% static 'css/sequence_style.css' %}">{% endblock %}
+{% block content %}
+
+<div class="main-body">
+    <div class="left-side d-flex flex-column justify-content-between">
+        <div>
+            <div class="p-3">
+                <div class="pt-3 mb-3">
+                    <h3>
+                        Photos
+                    </h3>
+                </div>
+
+                <p>
+                    {{ pageDescription }}
+                </p>
+            </div>
+            {% if messages %}
+                {% for message in messages %}
+                <div class="alert m-3 alert-{% if message.tags %}{{ message.tags }}{% endif %} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                {% endfor %}
+            {% endif %}
+
+            <div class="ml-3 mb-2 mr-3">
+                <h4>Filter Photos</h4>
+            </div>
+
+            <div class="p-3" style="border-top: 1px solid #dee2e6;">
+                <div class="search-form">
+                    <form method="GET" class="post-form" id="search_form">
+                        <input type="number" class="d-none" name="page" value="{{ page }}">
+                        {{ form.media }}
+                        {{ form.as_p }}
+                        <div class="form-group text-right mt-3">
+                            <button type="submit" class="save btn btn-primary">Search</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% include 'components/copyrite.html' %}
+    </div>
+    <div class="right-board list bg-light">
+        <div class="switch-list-viewer">
+            <input class="" type="checkbox" {% if request.GET.view_type is not None and request.GET.view_type == 'map-view' %}checked{% endif %} id="switch-list-viewer" data-toggle="toggle" data-on="Map View" data-off="List View" data-onstyle="success" data-offstyle="primary">
+        </div>
+        <div id="list-view" class="{% if request.GET.view_type is not None and request.GET.view_type == 'map-view' %}d-none{% endif %} mt-4 mb-2 ml-auto mr-auto">
+            <div class="paginator d-flex flex-column align-items-center">
+                {% if items.count > 0 %}
+                    <select name="filter_type" style="width: 210px" class="form-control mb-2" id="id_filter_type">
+                        <option value="captured_at" {% if request.GET.filter_type != 'label_count' and request.GET.filter_type != 'view_point' %}selected{% endif %}>order by Captured At</option>
+                        <option value="view_point" {% if request.GET.filter_type == 'view_point' %}selected{% endif %}>order by Viewpoint</option>
+                        <option value="label_count" {% if request.GET.filter_type == 'label_count' %}selected{% endif %}>order by Label Count</option>
+                    </select>
+                {% endif %}
+                {% if items.has_other_pages %}
+                    <ul class="pagination justify-content-center">
+                        {% if items.number != 1 %}
+                            <li class="page-item">
+                                <a class="btn paginator-btn page-link" data-page='1'>&laquo;</a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled">
+                                <a class="btn page-link" href="#" tabindex="-1" aria-disabled="true">&laquo;</a>
+                            </li>
+                        {% endif %}
+                        {% for i in items.paginator.pages %}
+                            {% if items.number == i %}
+                                <li class="active page-item"><a class="btn paginator-btn page-link bg-info" data-page='{{ i }}'>{{ i }}</a></li>
+                            {% else %}
+                                <li><a class="btn paginator-btn page-link" data-page='{{ i }}'>{{ i }}</a></li>
+                            {% endif %}
+                        {% endfor %}
+                        {% if items.number != items.paginator.num_pages %}
+                            <li class="page-item"><a class="btn paginator-btn page-link" data-page='{{ items.paginator.num_pages }}'>&raquo;</a></li>
+                        {% else %}
+                            <li class="disabled page-item"><a class="btn page-link disabled" href="#">&raquo;</a></li>
+                        {% endif %}
+                    </ul>
+                {% endif %}
+            </div>
+            <div class="item-list">
+                {% if items.count > 0 %}
+                    {% for item in items %}
+                        <div class="card sequence pl-3 pr-3 pt-2 pb-2 m-3 d-flex" id="image_{{ item.image.unique_id }}" data-image-id="{{ item.image.unique_id }}" >
+                            <div class="row align-items-center">
+                                <div class=" col-lg-5">
+                                    <div class="row align-items-center pl-1 pr-1">
+                                        <div class="col-sm-6 pl-1 pr-1">
+                                            <div class="min-map-box" id="map-{{ item.image.unique_id }}">
+                                            </div>
+                                        </div>
+
+                                        <div class="col-sm-6 pl-1 pr-1">
+                                            <div class="cover-image-box">
+                                                <div class="">
+                                                    {% if item.image.image_key is None %}
+                                                        <img class="w-100" src="{% static 'images/global/empty-1.png' %}">
+                                                    {% else %}
+                                                        <img class="w-100" src="https://images.mapillary.com/{{ item.image.image_key }}/thumb-320.jpg">
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="detail-box col-lg-7">
+                                    <div class="row">
+                                        <div class="item-detail-box p-2">
+                                            <div class="item-main w-100 float-left">
+                                                <div class="item-title text-info d-flex flex-row justify-content-between">
+                                                    <a href="{% if item.image.sequence_unique_id != '' %}{% url 'sequence.sequence_detail' unique_id=item.image.sequence_unique_id %}?image_key={{ item.image.image_key }}{% endif %}">
+                                                        <h6>{{ item.image.image_key }}</h6>
+                                                    </a>
+                                                </div>
+
+                                                <div class="w-100 d-flex flex-row align-items-end justify-content-between">
+                                                    <p class="mb-1 mr-2 item-transport-type text-center">
+                                                        <i class="transport-type-icon fas fa-{{ item.image.transport_parent_icon }}"></i>
+                                                        <br>
+                                                        {{ item.image.transport_parent }}
+                                                    </p>
+                                                    <p class="mb-1 mr-2 item-transport-type text-center">
+                                                        <i class="transport-type-icon fas fa-{{ item.image.transport_icon }}"></i>
+                                                        <br>
+                                                        {{ item.image.transport }}
+                                                    </p>
+                                                    <p class="mb-1 mr-2 item-image-count">
+                                                        {{ item.image.camera_make }}
+                                                    </p>
+                                                    <p class="mb-1 item-distance">
+                                                        {{ item.image.camera_model }}
+                                                    </p>
+                                                </div>
+
+
+                                                <div class="item-user">
+                                                    <a href="{% url 'account.profile' username=item.image.user %}">
+                                                        <span class="user">{{ item.image.user }}</span>
+                                                    </a>
+                                                </div>
+
+                                                <div>
+                                                    <span>{{ item.image.map_features }}</span>
+                                                </div>
+
+                                                <div>
+                                                    <span>View Point Count ({{ item.image.image_view_point_count }})</span>
+                                                </div>
+
+                                                <div>
+                                                    <span>Label Count ({{ item.image.image_label_count }})</span>
+                                                </div>
+
+                                                <div>
+                                                    <span>Captured at: {{ item.image.captured_at }}</span>
+                                                </div>
+
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="no-results d-flex justify-content-center align-items-center">
+                        <h5 class="text-info">No results match your criteria.</h5>
+                    </div>
+                {% endif %}
+            </div>
+            <div class="paginator">
+                {% if items.has_other_pages %}
+                    <ul class="pagination justify-content-center">
+                        {% if items.number != 1 %}
+                            <li class="page-item">
+                                <a class="btn paginator-btn page-link" data-page='1'>&laquo;</a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled">
+                                <a class="btn page-link" href="#" tabindex="-1" aria-disabled="true">&laquo;</a>
+                            </li>
+                        {% endif %}
+                        {% for i in items.paginator.pages %}
+                            {% if items.number == i %}
+                                <li class="active page-item"><a class="btn paginator-btn page-link bg-info" data-page='{{ i }}'>{{ i }}</a></li>
+                            {% else %}
+                                <li><a class="btn paginator-btn page-link" data-page='{{ i }}'>{{ i }}</a></li>
+                            {% endif %}
+                        {% endfor %}
+                        {% if items.number != items.paginator.num_pages %}
+                            <li class="page-item"><a class="btn paginator-btn page-link" data-page='{{ items.paginator.num_pages }}'>&raquo;</a></li>
+                        {% else %}
+                            <li class="disabled page-item"><a class="btn page-link disabled" href="#">&raquo;</a></li>
+                        {% endif %}
+                    </ul>
+                {% endif %}
+            </div>
+        </div>
+        <div class="{% if request.GET.view_type is None or request.GET.view_type != 'map-view' %}d-none{% endif %}" id="map">
+        </div>
+    </div>
+
+    <div class="detail-modal modal fade" style="padding-top: 140px !important;" id="imageDetailModal">
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+
+    $('.paginator-btn').click(function() {
+        let pageNum = $(this).data('page');
+        let url = setParamInURL('page', pageNum);
+        location.assign(url);
+    });
+
+    $('#id_filter_type').change(function () {
+        let value = $(this).val();
+        let url = location.href.split('?')[0]
+        const queryString = window.location.search;
+        const urlParams = new URLSearchParams(queryString);
+        urlParams.set('filter_type', value);
+        url = url + '?' + urlParams.toString();
+        location.assign(url);
+    });
+
+    mapboxgl.accessToken = mapboxToken;
+    var positions = [];
+    var sequence_unique_ids = [];
+    var image_keys = [];
+    {% for item in items %}
+        positions.push({{ item.image.point }});
+        sequence_unique_ids.push("{{ item.image.sequence_unique_id }}");
+        image_keys.push("{{ item.image.image_key }}");
+    {% endfor %}
+
+    var map_ary = [];
+    console.log(positions);
+    function draw_map(data, sequence_unique_id, image_key) {
+        var obj = $('.min-map-box').eq(i);
+        var obj_id = obj.attr('id');
+        var sceneData = [];
+        var item = {};
+        var scene_positions = [];
+        for (var j = 0; j < data.length; j++)
+        {
+            var lat = data[j][1];
+            var lng = data[j][0];
+            scene_positions.push([lng, lat]);
+            item = {
+                "type": "Feature",
+                "properties": {'sequence_unique_id': sequence_unique_id, 'image_key': image_key},
+                "geometry": {
+                    "coordinates": [lng, lat],
+                    "type": "Point"
+                }
+            };
+            sceneData.push(item);
+        }
+
+        if (scene_positions.length > 0)
+            var first_point = scene_positions[0];
+        else
+            var first_point = null;
+
+        console.log('positions', sceneData)
+        if (first_point != null) {
+            var map = new mapboxgl.Map({
+                container: obj_id, // container id
+                style: 'mapbox://styles/mapbox/streets-v11', //hosted style id
+                center: first_point, // starting position
+                zoom: 12, // starting zoom
+            });
+        }
+        else {
+            var map = new mapboxgl.Map({
+                container: obj_id, // container id
+                style: 'mapbox://styles/mapbox/streets-v11', //hosted style id
+                center: [-87.622088, 41.878781], // starting position
+                zoom: 12, // starting zoom
+            });
+        }
+        map.on('load', function() {
+            map.addSource('points', {
+                'type': 'geojson',
+                'data': {
+                    'type': 'FeatureCollection',
+                    'features': sceneData
+                }
+            });
+            map.addLayer({
+                'id': 'mapillary-images',
+                'type': 'circle',
+                'source': 'points',
+                "paint": {
+                    "circle-color": "#039825",
+                    "circle-radius": 6
+                }
+            });
+        });
+        map_ary.push(map)
+        map.resize();
+    }
+
+    var centerPointerData = [];
+    var map = new mapboxgl.Map({
+        container: 'map', // container id
+        style: 'mapbox://styles/mapbox/streets-v11', //hosted style id
+        center: [-74.5, 40], // starting position
+        zoom: 1 // starting zoom
+    });
+
+    map.addControl(
+        new MapboxGeocoder({
+            accessToken: mapboxgl.accessToken,
+            localGeocoder: coordinatesGeocoder,
+            zoom: 1,
+            placeholder: '',
+            mapboxgl: mapboxgl
+        }), 'top-left'
+    );
+
+    for (i = 0; i < positions.length; i++)
+    {
+        draw_map([positions[i]], sequence_unique_ids[i], image_keys[i]);
+        drawMapView(i, [positions[i]], sequence_unique_ids[i], image_keys[i]);
+    }
+
+    function drawMapView(l, data, sequence_unique_id, image_key) {
+        if (data.length == 0)
+            return false;
+        var centerItem = {
+            "type": "Feature",
+            "properties": {'sequence_unique_id': sequence_unique_id, 'image_key': image_key},
+            "geometry": {
+                "coordinates": [data[0][0], data[0][1]],
+                "type": "Point"
+            }
+        };
+        centerPointerData.push(centerItem);
+    }
+
+    // Create a popup, but don't add it to the map yet.
+    const popup = new mapboxgl.Popup({
+        closeButton: false,
+        closeOnClick: false
+    });
+
+    map.on('load', function() {
+        // {% if is_filtered == False %}
+        //     drawMapillaryIamgeByUserKey('');
+        // {% endif %}
+        drawMapByUserKey('');
+        map.on('mouseenter', 'original_mapillary-images', function(e) {
+          // Change the cursor style as a UI indicator.
+          map.getCanvas().style.cursor = 'pointer';
+
+            const coordinates = e.features[0].geometry.coordinates.slice();
+            const key = e.features[0].properties.key;
+            const url = "https://images.mapillary.com/" + key + "/thumb-320.jpg";
+
+            // Ensure that if the map is zoomed out such that multiple
+          // copies of the feature are visible, the popup appears
+          // over the copy being pointed to.
+          while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
+            coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
+          }
+
+          // Populate the popup and set its coordinates
+          // based on the feature found.
+          popup.setLngLat(coordinates)
+          .setHTML('<img src="' + url + '" width="160"  alt=""/>')
+          .addTo(map);
+        });
+
+        map.on('click', 'original_mapillary-images', function (e) {
+            console.log(e.features[0])
+            getSequenceDetailByImageKey(e.features[0].properties["key"]);
+        });
+
+        // Change it back to a pointer when it leaves.
+        map.on('mouseleave', 'original_mapillary-images', function () {
+            map.getCanvas().style.cursor = '';
+            popup.remove();
+        });
+    });
+
+    function drawMapByUserKey(userkey) {
+        console.log('userkey', userkey);
+        let filter = ['all',
+            ['==', 'userkey', userkey]
+        ];
+        if (typeof userkey == 'undefined' || userkey === '')
+            filter = ['all']
+
+        if (map.getLayer('mtp-images')) map.removeLayer('mtp-images');
+        if (map.getSource('mtp-images')) map.removeSource('mtp-images');
+
+        {#if (map.getLayer('mtp-images-big')) map.removeLayer('mtp-images-big');#}
+        {#if (map.getSource('mtp-images-big')) map.removeSource('mtp-images-big');#}
+
+        map.addSource('mtp-images', {
+            "type": "vector",
+            "tiles": ["{{ BASE_URL }}{% url 'api.sequence.image_mvt' version='v1' %}?tile={z}/{x}/{y}&page_name=photo_list&limit=5000"],
+        });
+
+        map.addLayer({
+            "id": "mtp-images",
+            "type": "circle",
+            "source": 'mtp-images',
+            "source-layer": 'mtp-images',
+            'filter': filter,
+            "paint": {
+                "circle-color": "#7880bd",
+                "circle-radius": 6
+            }
+        }, "waterway-label");
+
+        /*
+        map.addSource('mtp-images-big', {
+            "type": "vector",
+            "tiles": ["{{ BASE_URL }}{% url 'api.sequence.image_mvt' version='v1' %}?tile={z}/{x}/{y}&page_name=photo_list&limit=500"],
+            "minzoom": 1,
+            "maxzoom": 5
+        });
+
+        map.addLayer({
+            "id": "mtp-images-big",
+            "type": "circle",
+            "source": 'mtp-images-big',
+            "source-layer": 'mtp-images',
+            'filter': filter,
+            "paint": {
+                "circle-color": "#7880bd",
+                "circle-radius": 6
+            }
+        }, "waterway-label");
+        */
+    }
+
+    function drawMapillaryIamgeByUserKey(userkey) {
+        var filter = ['all',
+            ['==', 'userkey', userkey]
+        ]
+        if (typeof userkey == 'undefined' || userkey == '')
+            filter = ['all']
+
+        if (map.getLayer('original_mapillary')) map.removeLayer('original_mapillary');
+        if (map.getLayer('original_mapillary-images')) map.removeLayer('original_mapillary-images');
+        if (map.getSource('original_mapillary-images')) map.removeSource('original_mapillary-images');
+        if (map.getSource('original_mapillary-sequences')) map.removeSource('original_mapillary-sequences');
+
+        map.addSource('original_mapillary-sequences', {
+            "type": "vector",
+            "tiles": ["https://tiles3.mapillary.com/v0.1/{z}/{x}/{y}.mvt"],
+        });
+
+        map.addLayer({
+            "id": "original_mapillary",
+            "type": "line",
+            "source": 'original_mapillary-sequences',
+            "source-layer": 'mapillary-sequences',
+            'filter': filter,
+            "layout": {
+                "line-cap": "round",
+                "line-join": "round"
+            },
+            "paint": {
+                "line-opacity": 0.6,
+                "line-color": "grey",
+                "line-width": 2
+            }
+        }, "waterway-label");
+
+        map.addSource('original_mapillary-images', {
+            "type": "vector",
+            "tiles": ["https://tiles3.mapillary.com/v0.1/{z}/{x}/{y}.mvt"],
+            "minzoom": 6,
+            "maxzoom": 14
+        });
+
+        map.addLayer({
+            "id": "original_mapillary-images",
+            "type": "circle",
+            "source": 'original_mapillary-images',
+            "source-layer": 'mapillary-images',
+            'filter': filter,
+            "paint": {
+                "circle-color": "grey",
+                "circle-radius": 6
+            }
+        }, "waterway-label");
+    }
+
+    function getImageDetail(sequence_unique_id, image_key) {
+        var url = "{% url 'sequence.sequence_detail' unique_id='sequence_unique_id' %}?image_key=" + image_key;
+        url = url.replace('sequence_unique_id', sequence_unique_id);
+        location.assign(url);
+    }
+
+    function getSequenceDetailByImageKey(image_key) {
+        let url = "{% url 'sequence.ajax_get_detail_by_image_key' image_key='init_image_key' %}";
+        url = url.replace('init_image_key', image_key);
+        $.ajax({
+            url: url,
+            type: 'GET',
+            data: {},
+            dataType: 'json',
+            success: function (data) {
+                if (!data.sequence) {
+                    toastr.error(data.message);
+                }
+                else {
+                    console.log(data['sequence_unique_id'])
+                    getImageDetail(data['sequence_unique_id'], image_key)
+                }
+            }
+        });
+    }
+
+    /*
+    function loadMapFeature(value) {
+        map.on("load", function(){
+            map.loadImage('https://www.mapillary.com/developer/api-documentation/images/traffic_sign/regulatory--advisory-maximum-speed-limit--g1.png', function(error, image) {
+                if (error) throw error;
+                map.addImage(value, image);
+                map.addSource(value, {
+                    'type': 'vector',
+                    "tiles": ["{{ BASE_URL }}{% url 'api.sequence.map_feature_mvt' version='v1' %}?tile={z}/{x}/{y}&limit=500"],
+                });
+                map.addLayer({
+                    'id': 'stores',
+                    'source': value,
+                    'source-layer': 'mtp-map-features',
+                    'type': 'symbol',
+                    'layout': {
+                        'icon-image': value,
+                        'icon-size': 0.5
+                    },
+                });
+            });
+        });
+    }
+    */
+    {#loadMapFeature('warning--other-danger--g1');#}
+
+    $('#switch-list-viewer').change(function () {
+        let url;
+        if ($(this).prop('checked')) {
+            $('#list-view').addClass('d-none');
+            $('#map').removeClass('d-none');
+            url = setParamInURL('view_type', 'map-view');
+        }
+        else {
+            $('#list-view').removeClass('d-none');
+            $('#map').addClass('d-none');
+            url = setParamInURL('view_type', 'list-view');
+        }
+        history.pushState({
+            id: 'Image Leaderboard List'
+        }, "{{ pageTitle }}", url);
+        map.resize();
+    })
+
+</script>
+{% endblock %}

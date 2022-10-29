@@ -1,0 +1,83 @@
+{% extends 'layouts/auth/base.html' %}
+
+{% block title %}Login{% endblock %}
+{% load static %}
+{% block content %}
+    <div class="container">
+        <div class="content pt-5">
+            <div class="card login ml-auto mr-auto">
+                <div class="card-header d-flex align-items-center">
+                    <a href="{% url 'home' %}">
+                        <img src="{% static 'images/iconified/apple-touch-icon-57x57.png' %}">
+                    </a>
+                    <h2 class="ml-4">Login</h2>
+                </div>
+                <div class="card-body">
+                    {% if messages %}
+                        {% for message in messages %}
+                        <div class="alert alert-{% if message.tags %}{{ message.tags }}{% endif %} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                        {% endfor %}
+                    {% endif %}
+                    <form method="post" class="mb-3" onsubmit="return check_actived_user()">
+                        {% csrf_token %}
+                        {{ form.as_p }}
+                        {% if not next is None and next != ''  %}
+                            <input type="hidden" name="next" value="{{ next }}" />
+                        {% elif not request.GET.next is None and request.GET.next != '' %}
+                            <input type="hidden" name="next" value="{{ next }}" />
+                        {% else %}
+                            <input type="hidden" name="next" value="" />
+                        {% endif %}
+                        <div class="text-danger user-disabled d-none">
+                          Account not confirmed. Click <a href="">here</a> to resend confirmation email.
+                        </div>
+                        <div class="d-flex flex-row justify-content-between align-items-center">
+                            <a href="{% url 'signup' %}">Sign Up</a>
+                            <button type="submit" class="btn btn-primary">Login</button>
+                        </div>
+                    </form>
+                    <div class="text-right">
+                        <a class="" href="{% url 'password_reset' %}">Forgot Password</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+    <script>
+        function check_actived_user() {
+            let return_flag = true;
+            $.ajax({
+                type: 'GET',
+                url: '{% url "check_unconfirmed_user" %}',
+                async: false,
+                dataType: 'json',
+                data: {'email': $('#id_email').val()},
+                success: function (data) {
+                    if  (data.status == 'success') {
+                        if (data.type == 'disabled') {
+                            $('.user-disabled').removeClass('d-none');
+
+                            let url = "{% url 'retry_verify_user' email='email' %}";
+                            url = url.replace('email', $('#id_email').val());
+                            $('.user-disabled a').attr('href', url);
+                            return_flag = false;
+                        }
+                    }
+                }
+            })
+            return return_flag;
+        }
+
+        $('#id_email').change(function () {
+            $('.user-disabled').addClass('d-none');
+        })
+    </script>
+{% endblock %}

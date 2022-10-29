@@ -1,0 +1,92 @@
+.dz-image img {
+    width: 100% !important;
+    height: 100% !important;
+}
+.dz-image {
+    width: 100% !important;
+    height: 100% !important;
+    border-radius: 0px !important;
+}
+.dz-preview.dz-image-preview {
+    width: 100% !important;
+    height: 100% !important;
+    padding: 0px !important;
+    margin: 0px !important;
+}
+form.dropzone {
+    padding: 0px !important;
+    width: 200px !important;
+    height: 200px !important;
+}
+.dropzone .dz-preview .dz-error-message {
+    left: 103px;
+}
+
+.dropzone .dz-preview:hover .dz-image img {
+    -webkit-transform: unset;
+    transform: unset;
+    -webkit-filter: unset;
+    filter: unset;
+}
+
+.dz-image-cover img {
+    width: 120px !important;
+    height: 120px !important;
+    border-radius: 50% !important;
+}
+
+.card.section {
+    /*height: 100px;*/
+}
+
+.modal-dialog {
+    margin-top: 130px;
+}
+
+.level-badge {
+    display: flex;
+    flex-direction: column;
+    align-content: center;
+    justify-content: center;
+    text-align: center;
+}
+
+.level-badge i {
+    color: #ff6b6b;
+}
+
+.level-badge-0 i {
+    font-size: 30px;
+}
+
+.level-badge-1 i {
+    font-size: 34px;
+}
+
+.level-badge-2 i {
+    font-size: 38px;
+}
+
+.level-badge-3 i {
+    font-size: 42px;
+}
+
+.level-badge-4 i {
+    font-size: 46px;
+}
+
+.level-badge-5 i {
+    font-size: 50px;
+}
+
+.level-badge-6 i {
+    font-size: 54px;
+}
+
+.level-badge-7 i {
+    font-size: 58px;
+}
+
+.level-badge-8 i {
+    font-size: 62px;
+}

@@ -1,0 +1,2111 @@
+{% extends 'layouts/base.html' %}
+{% load static %}
+{% block app_guidebook %}active{% endblock %}
+{% block app_style %}
+    <link href="{% static 'css/dropzone.min.css' %}" type='text/css' rel='stylesheet' />
+    <script src="{% static 'js/dropzone.min.js' %}" type='text/javascript'></script>
+    <link rel="stylesheet" href="{% static 'css/guidebook_style.css' %}">
+    <style>
+        .TagContainer .TagVertex {
+            width: 50px;
+            height: 50px;
+            background: unset !important;
+
+            background-repeat: no-repeat;
+            background-size: cover !important;
+
+        }
+        .TagContainer .TagSpotInteractor {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+        }
+
+    .dz-image img {
+        width: 100% !important;
+        height: 100% !important;
+    }
+    .dz-image {
+        width: 100% !important;
+        height: 100% !important;
+        border-radius: 0px !important;
+    }
+    .dz-preview.dz-image-preview {
+        width: 100% !important;
+        height: 100% !important;
+        padding: 0px !important;
+        margin: 0px !important;
+    }
+    form.dropzone {
+        padding: 0px !important;
+        width: 200px !important;
+        height: 200px !important;
+    }
+    .dropzone .dz-preview .dz-error-message {
+        left: 103px;
+    }
+
+    .dropzone .dz-preview:hover .dz-image img {
+        -webkit-transform: unset;
+        transform: unset;
+        -webkit-filter: unset;
+        filter: unset;
+    }
+
+    .dz-image-cover img {
+        width: 120px !important;
+        height: 120px !important;
+        border-radius: 50% !important;
+    }
+
+
+    .modal-dialog {
+        margin-top: 130px;
+    }
+</style>
+
+{% endblock %}
+{% block content %}
+    <link href='https://unpkg.com/mapillary-js@2.20.0/dist/mapillary.min.css' rel='stylesheet' />
+<div class="main-body">
+    <div class="left-side p-3 d-flex flex-column justify-content-between">
+        <div>
+            <div class="page-header">
+                <div class="pt-3 mb-3">
+                    <h4>
+                        {{ pageName }}
+                    </h4>
+                </div>
+
+                <p>
+                    {{ pageDescription }}
+                </p>
+            </div>
+            <div class="guidebook-detail card p-2">
+                <div class="main-guidebook">
+                    <div class="guidebook-title text-center text-info mt-1">
+                        <h3>
+                            {{ guidebook.name }}
+                        </h3>
+                    </div>
+
+                    <div class="guidebook-description">
+                        <p class="mb-1">
+                            {{ guidebook.description }}
+                        </p>
+                    </div>
+
+                    <div class="guidebook-category mt-2" style="color: blueviolet;">
+                        <p class="mb-1">
+                            {{ guidebook.category }}
+                        </p>
+                    </div>
+
+                    <div class="guidebook-tag mt-2" style="min-height: 24px;">
+                        {% for tag_name in guidebook.get_tags %}
+                            <span class="tag pl-1 pr-1 mt-1 mb-1 mr-1">
+                                {{ tag_name }}
+                            </span>
+                        {% endfor %}
+                    </div>
+
+                    <div class="guidebook-created-at text-secondary mt-2 d-flex justify-content-between align-items-center">
+                        <div class="username">
+                            <a href="{% url 'account.profile' username=guidebook.user.username %}">
+                                <span class="" style="color: brown;">
+                                    {{ guidebook.user }}
+                                </span>
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="action text-right mt-2">
+                        <button type="button" class="btn btn-sm btn-primary" id="edit_button">Edit</button>
+                    </div>
+                </div>
+
+                <div class="main-guidebook-form d-none">
+                    <form method="POST" class="post-form" id="guidebook_edit_form" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        {{ g_form.media }}
+                        {{ g_form.as_p }}
+                        <div class="form-group d-flex justify-content-end">
+                            <button type="button" class="btn btn-sm btn-primary save-btn mr-2" id="guidebook_save_button">Save</button>
+                            <button type="button" class="btn btn-sm btn-dark" id="guidebook_cancel_button">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+
+                <hr class="mt-3 mb-1" />
+
+                <div class="guidebook-others float-right d-flex flex-row justify-content-between mt-2">
+                    <div class="scenes text-center d-flex align-items-center">
+                        {% if guidebook.getSceneCount == 0 %}
+                            <i class="fas fa-image"></i>
+                        {% else %}
+                            <i class="fas fa-image"></i>
+                        {% endif %}
+                        <span class="text-center ml-2 m-0">
+                            {{ guidebook.getSceneCount }} Photos
+                        </span>
+                    </div>
+                    <div class="like text-center d-flex align-items-center">
+                        {% if guidebook.get_like_count == 0 %}
+                            <i class="far fa-thumbs-up"></i>
+                        {% else %}
+                            <i class="far fa-thumbs-up"></i>
+                        {% endif %}
+                        <span class="text-center ml-2 m-0">
+                            {{ guidebook.get_like_count }} Likes
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-3">
+                <h4>
+                    Scene List:
+                </h4>
+            </div>
+
+            <div class="mt-2 p-1 border scene-list list_container" id="scene_list">
+                {% for scene in guidebook.getScenes %}
+                    <div class="list_item">
+                        <div class="scene-box p-1 mt-2 mb-2" id="scene_{{ scene.pk }}" data-scene-id="{{ scene.pk }}" data-image_key="{{ scene.image_key }}" style="cursor: pointer">
+                            <form method="POST" class="post-form has-validation-callback" id="add_scene_form_{{ scene.pk }}">
+                                {% csrf_token %}
+                                <input type="number" name="scene_id" class="d-none" value="{{ scene.pk }}" id="id_scene_id">
+                                <input type="text" name="image_key" class="form-control d-none" value="{{ scene.image_key }}" required="" id="id_image_key">
+                                <input type="text" name="title" class="form-control mb-1" disabled="disabled" value="{{ scene.title }}" placeholder="Scene Title" required="" id="id_title">
+                                <textarea name="description" cols="40" rows="3" disabled class="form-control mb-1" placeholder="Scene Description" style="resize: none;" id="id_description">{{ scene.description }}</textarea>
+                                <input type="text" name="lat" class="form-control d-none" value="{{ scene.lat }}" required="" id="id_lat">
+                                <input type="text" name="lng" class="form-control d-none" value="{{ scene.lng }}" required="" id="id_lng">
+                                <input type="text" name="start_x" class="form-control d-none" value="{{ scene.start_x }}" required="" id="id_start_x">
+                                <input type="text" name="start_y" class="form-control d-none" value="{{ scene.start_y }}" required="" id="id_start_y">
+                                <input type="text" name="username" class="form-control d-none" value="{{ scene.username }}" required="" id="id_username">
+                                <div class="text-right">
+                                    <button type="button" class="btn btn-sm btn-info point_list" onclick="showPOIList('{{ scene.pk }}')" data-scene-id="{{ scene.pk }}">Edit POI's ({{ scene.get_poi_count }})</button>
+                                    <button type="button" id="change_scene_button" class="save btn btn-sm btn-warning change-btn" onclick="enable_scene_form({{ scene.pk }})">Edit Scene</button>
+                                    <button type="button" id="save_scene_button" class="save btn btn-sm btn-primary save-btn d-none" onclick="saveScene('{% url "guidebook.ajax_add_scene" unique_id=guidebook.unique_id %}', {{ scene.pk }})">Save</button>
+                                    <button type="button" class="btn btn-sm btn-danger delete_scene_button" data-scene-id="{{ scene.pk }}">Delete</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+
+{#            <div class="add-new-scene mt-3 text-right">#}
+{#                <button type="button" class="btn btn-primary">Add Scene</button>#}
+{#            </div>#}
+
+            <div class="new-scene-box">
+                <div class="mt-3">
+                    <h5>
+                        New Scene:
+                    </h5>
+                </div>
+
+                <div class="card mt-2 p-1 add-scene-form">
+                    <p class="mt-2 mb-2 text-center">
+                        Find an image on the map to use with this scene. When you're happy with the image, add a scene title and description and click save scene
+                    </p>
+                    <p class="error text-danger text-center">This scene already exists in this guidebook.</p>
+                    <div class="scene-box p-1 mt-2 mb-2" id="scene_0" data-scene-id="0">
+                        <form method="POST" class="post-form has-validation-callback" id="add_scene_form_0">
+                            {% csrf_token %}
+                            <input type="number" name="scene_id" class="d-none" id="id_new_scene_id" disabled value="0">
+                            <input type="text" name="image_key" class="form-control d-none" disabled required="" id="id_new_image_key">
+                            <input type="text" name="title" class="form-control mb-1" disabled placeholder="Scene Title" required="" id="id_new_title">
+                            <textarea name="description" cols="40" rows="3" disabled class="form-control mb-1" placeholder="Scene Description" style="resize: none;" id="id_new_description">{{ scene.description }}</textarea>
+                            <input type="text" name="lat" class="form-control d-none " disabled  required="" id="id_new_lat">
+                            <input type="text" name="lng" class="form-control d-none" disabled  required="" id="id_new_lng">
+                            <input type="text" name="start_x" class="form-control d-none" disabled  required="" id="id_new_start_x">
+                            <input type="text" name="start_y" class="form-control d-none" disabled  required="" id="id_new_start_y">
+                            <input type="text" name="username" class="form-control d-none" disabled  required="" id="id_new_username">
+                            <div class="text-right">
+                                <button type="button" id="save_scene_button" class="save btn btn-sm btn-primary save-btn" disabled="" onclick="saveScene('{% url "guidebook.ajax_add_scene" unique_id=guidebook.unique_id %}', 0)">Save New Scene</button>
+{#                                <button type="button" class="cancel btn btn-dark btn-sm">Abandon</button>#}
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card p-2 mt-2">
+                <div class="">
+                    <form method="POST" id="delete_guidebook_form" class="d-flex align-items-center" action="{% url 'guidebook.guidebook_delete' unique_id=guidebook.unique_id %}">
+                        {% csrf_token %}
+                        <div class="d-flex flex-row justify-content-between w-100">
+                            <div class="publish-guidebook text-center {% if guidebook.getSceneCount == 0 %}d-none{% endif %} ">
+                                {% if guidebook.is_approved and guidebook.is_published %}
+                                    <button type="button" class="btn btn-secondary" id="publish_swithch_guidebook">Unpublish</button>
+                                {% elif guidebook.is_approved and not guidebook.is_published %}
+                                    {% if guidebook.getSceneCount == 0 %}
+                                        <button type="button" class="btn btn-secondary" id="publish_swithch_guidebook">Unpublish</button>
+                                    {% else %}
+                                        <button type="button" class="btn btn-success" id="publish_swithch_guidebook">Publish Now</button>
+                                    {% endif %}
+
+                                {% endif %}
+                            </div>
+
+                            <div class="preview-guidebook text-center">
+                                <a href="{% url 'guidebook.guidebook_detail' unique_id=guidebook.unique_id %}">
+                                    <button type="button" class="btn btn-info">Preview</button>
+                                </a>
+                            </div>
+
+                            <div class="text-center delete-gudiebook">
+                                <button type="button" id="delete_guidebook" class="btn btn-danger">Delete</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    
+        {% include 'components/copyrite.html' %}
+    </div>
+    <div class="left-side poi-box p-2 d-none">
+        <div class="hide-poi-box text-right mt-3">
+            <button class="btn btn-info" onclick="hide_poi_box()">
+                Back To Scenes
+            </button>
+        </div>
+
+        <div class="poi-list">
+            <div class="poi-header">
+                <h5 class="scene-title"></h5>
+                <span class="scene-description"></span>
+            </div>
+
+            <hr class="mt-2 mb-2" />
+
+            <div class="">
+                <div class="">
+                    <p class="font-weight-bold">Rotate to set starting view</p>
+
+                    <p>
+                        When viewers enter the scene, this is what they'll see.
+                    </p>
+                </div>
+
+                <div class="text-right mb-3">
+                    <button type="button" class="btn btn-primary" id="set_starting_view" onclick="set_starting_view()">
+                        Set Starting View
+                    </button>
+                </div>
+            </div>
+
+            <hr class="mt-2 mb-2" />
+
+            <div class="external-scene">
+
+            </div>
+
+            <div class="">
+                <div class="">
+                    <p class="font-weight-bold">Link video or image to this scene.</p>
+
+                    <p>
+                        You can link video or upload image for your scene.
+                    </p>
+                </div>
+
+
+
+                <div class="text-right mb-3">
+                    <div class="scene-added-media">
+                    </div>
+                    <div class="w-100 btn-group dropup scene-media-actions scene-add-media text-right">
+                        <div class="w-100 add-actions">
+                            <a class="btn btn-warning btn-sm" href="javascript:showSceneVideoModal();">Add Video</a>
+                            <a class="btn btn-warning btn-sm ml-3" href="javascript:uploadSceneImage();">Add Photo</a>
+                        </div>
+
+                        <div class="w-100 delete-action d-none">
+                            <a class="btn btn-danger btn-sm ml-3" href="javascript:deleteMedia(true);">Delete Media</a>
+                        </div>
+{#                                <button type="button" class="btn btn-sm btn-warning dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">#}
+{#                                    Add photo or video#}
+{#                                </button>#}
+{#                                <div class="dropdown-menu">#}
+{#                                    <a class="dropdown-item" href="javascript:showPOIVideoModal();">Link Video</a>#}
+{#                                    <a class="dropdown-item" href="javascript:uploadPOIImage();">Upload Image</a>#}
+{#                                </div>#}
+                    </div>
+                </div>
+            </div>
+
+            <hr class="mt-2 mb-2" />
+
+            <div class="">
+                <p>
+                    Add point's of interest to this scene to give viewers more information.
+                </p>
+            </div>
+
+            <div class="text-right mb-3">
+                <button type="button" class="btn btn-primary" id="add_poi" onclick="add_new_poi()">
+                    Add new POI
+                </button>
+            </div>
+
+            <div class="accordion" id="poi_list">
+            </div>
+        </div>
+    </div>
+
+    <div class="right-board">
+        <div class="board">
+            <div class="full-screen board-w-400">
+                <div class="switch-full-screen switch_screen d-none">
+                    <img class="w-100" src="{% static 'images/icon/flap.svg' %}">
+                </div>
+                <div class="map-board w-100 display" id="map">
+
+                </div>
+                <div class="mapboxgl-ctrl-top-left">
+                    <div class="mapboxgl-ctrl-geocoder mapboxgl-ctrl username-search-bar closed">
+                        <i class="far fa-user mapboxgl-ctrl-geocoder--icon mapboxgl-ctrl-geocoder--icon-search" style="color: #000000bd; font-size: 20px; margin-left: 2px; margin-top: 1px;"></i>
+                        <input type="text" class="mapboxgl-ctrl-geocoder--input" placeholder="Search by Username" aria-label="Search by Username">
+                    </div>
+                </div>
+            </div>
+            <div class="small-screen small d-none">
+                <div class="switch-full-screen switch_screen" >
+                    <img class="w-100" src="{% static 'images/icon/flap.svg' %}">
+                </div>
+
+                <div id='mapillary_image_box' class="image-box display"></div>
+            </div>
+            <div class="show-or-hide">
+                <div class="minimize-button d-none" onclick="showOrHide()">
+                    <img class="w-100" src="data:image/svg+xml;charset=utf-8,%3C?xml version='1.0' encoding='UTF-8' standalone='no'?%3E %3Csvg width='22px' height='18px' viewBox='0 0 22 18' version='1.1' xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink'%3E %3C!-- Generator: sketchtool 3.7.2 (28276) - http://www.bohemiancoding.com/sketch --%3E %3Ctitle%3E390F95AB-67C8-42FF-B9FF-C317EDED2467%3C/title%3E %3Cdesc%3ECreated with sketchtool.%3C/desc%3E %3Cdefs%3E %3Crect id='path-1' x='0' y='0' width='22' height='17' rx='4'/%3E %3Cfilter x='-50%25' y='-50%25' width='200%25' height='200%25' filterUnits='objectBoundingBox' id='filter-2'%3E %3CfeOffset dx='0' dy='1' in='SourceAlpha' result='shadowOffsetOuter1'/%3E %3CfeColorMatrix values='0 0 0 0 0.278431373 0 0 0 0 0.290196078 0 0 0 0 0.305882353 0 0 0 0.4 0' type='matrix' in='shadowOffsetOuter1'/%3E %3C/filter%3E %3C/defs%3E %3Cg id='Page-1' stroke='none' stroke-width='1' fill='none' fill-rule='evenodd'%3E %3Cg id='view_component_photo' transform='translate(-12.000000, -12.000000)'%3E %3Cg id='minimize' transform='translate(12.000000, 12.000000)'%3E %3Cg id='Rectangle-211'%3E %3Cuse fill='black' fill-opacity='1' filter='url(%23filter-2)' xlink:href='%23path-1'/%3E %3Cuse fill='%23FFFFFF' fill-rule='evenodd' xlink:href='%23path-1'/%3E %3C/g%3E %3Crect id='Rectangle-210' fill='%23474A4E' x='4' y='10' width='14' height='2' rx='100'/%3E %3C/g%3E %3C/g%3E %3C/g%3E %3C/svg%3E">
+                </div>
+                <div class="maximize-button d-none" onclick="showOrHide()">
+                    <img class="w-100" src="{% static 'images/icon/restore_viewer.svg' %}">
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+    <!-- Modal -->
+<div class="modal fade" id="uploadPictureModal" tabindex="-1" role="dialog" aria-labelledby="uploadPictureModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="uploadPictureModalLabel">Upload Picture</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="file-upload">
+                    <form action="{% url 'guidebook.ajax_upload_scene_image' unique_id=guidebook.unique_id scene_id='scene_id' %}" class="dropzone ml-auto mr-auto d-flex align-items-center justify-content-center">
+                        <div class="fallback">
+                            <input name="image" type="file" multiple="false" />
+                        </div>
+                    </form>
+                    <div class="text-right mt-3">
+
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary d-none" id='uploadfile'>Upload</button>
+                <button type="button" class="btn btn-danger d-none" id="removefile">Remove</button>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="uploadVideoModal" tabindex="-1" role="dialog" aria-labelledby="uploadVideoModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="uploadVideoModalLabel">Link Youtube Video.</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="">
+                    <form action="{% url 'guidebook.ajax_upload_scene_video' unique_id=guidebook.unique_id scene_id='scene_id' %}" class="">
+                        {% csrf_token %}
+                        <input name="video_url" type="text" class="form-control w-100" data-validation="custom" data-validation-regexp="youtube.com/watch" />
+                    </form>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" onclick="saveSceneVideoURL()">Save</button>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+
+
+    var poi_clicking = false;
+
+    var poi_mouseup = function (e) {
+        poi_clicking = false;
+        var poi_id = e.target['data-poi-id'];
+    };
+    var poi_mousemove = function (e) {
+        console.log('mousemove', e.target['data-poi-id'])
+    };
+    var poi_mousedown = function (e) {
+        poi_clicking = true;
+        console.log('mousedown', e)
+    };
+    var poi_mouseover = function (e) {
+        console.log('mouseover', e)
+        refresh_mapillery_classes();
+    };
+    var poi_click = function (e) {
+        console.log('mouseclick', e)
+    };
+    var selected_poi_id = 0;
+</script>
+<script src="{% static 'js/mapillary.js' %}"></script>
+<script>
+    var add_new_scene = false;
+    $('#add_scene_button').click(function () {
+        $('.add-scene-form').removeClass('d-none');
+        add_new_scene = true;
+    });
+
+    $.ajaxSetup({
+        data: {csrfmiddlewaretoken: '{{ csrf_token }}' },
+    });
+
+    $('#edit_button').click(function () {
+        $('.main-guidebook').addClass('d-none');
+        $('.main-guidebook-form').removeClass('d-none');
+    });
+    $('#guidebook_cancel_button').click(function () {
+        $('.main-guidebook-form').addClass('d-none');
+        $('.main-guidebook').removeClass('d-none');
+    });
+    $('#guidebook_save_button').click(function () {
+         $.ajax({
+            url: "{% url 'guidebook.ajax_guidebook_update' unique_id=guidebook.unique_id %}",
+            type: 'POST',
+            data: $('#guidebook_edit_form').serialize(),
+            dataType: 'json',
+            success: function (data) {
+                if (data.status == 'failed')
+                    toastr.error(data.message);
+                else
+                {
+                    toastr.success(data.message);
+                    var guidebook = data.guidebook;
+                    $('.main-guidebook .guidebook-title').html('<h3>' + guidebook.title + '</h3>');
+                    $('.main-guidebook .guidebook-description').html('<p class="mb-1">' + guidebook.description + '</p>');
+                    $('.main-guidebook .guidebook-category').html('<p class="mb-1">' + guidebook.category + '</p>');
+                    var html = '';
+                    for (var i = 0; i < guidebook.tag.length; i++) {
+                        html += '<span class="tag pl-1 pr-1 mt-1 mb-1 mr-1">' + guidebook.tag[i] + '</span>';
+                    }
+                    $('.main-guidebook .guidebook-tag').html(html);
+                    $('.main-guidebook').removeClass('d-none');
+                    $('.main-guidebook-form').addClass('d-none');
+                }
+            }
+        });
+    });
+
+    var is_show_poi_list = false;
+    function hide_poi_box() {
+        $('.left-side.poi-box').addClass('d-none');
+        is_show_poi_list = false;
+        set_select_scene();
+        $('.poi-list').removeClass('d-none');
+    }
+    var current_scene_id = 0;
+    var current_node_point = null;
+    var current_node_key = '';
+    var current_node_username = '';
+    var current_order_number = 0;
+    toastr.options = {
+      "closeButton": false,
+      "debug": false,
+      "newestOnTop": false,
+      "progressBar": false,
+      "positionClass": "toast-top-right",
+      "preventDuplicates": false,
+      "onclick": null,
+      "showDuration": "300",
+      "hideDuration": "1000",
+      "timeOut": "5000",
+      "extendedTimeOut": "1000",
+      "showEasing": "swing",
+      "hideEasing": "linear",
+      "showMethod": "fadeIn",
+      "hideMethod": "fadeOut"
+    };
+
+    var scene_positions = [];
+    var key_list = [];
+    var sceneData = [];
+    var item = {};
+
+    $('.scene-box').each(function (index) {
+        if ($(this).attr('data-scene-id') == '0')
+            return;
+        var lat = $(this).find('input[name=lat]').val();
+        var lng = $(this).find('input[name=lng]').val();
+        var key = $(this).find('input[name=image_key]').val();
+        scene_positions.push([lng, lat]);
+        key_list.push(key);
+        item = {
+            "type": "Feature",
+            "properties": {"key": key},
+            "geometry": {
+                "coordinates": [lng, lat],
+                "type": "Point"
+            }
+        };
+        sceneData.push(item);
+    });
+
+    var init_node = null;
+    var init_start_x = 0.5;
+    var init_start_y = 0.5;
+    if (key_list.length > 0) {
+        init_node = "{{ guidebook.getFirstScene.image_key }}";
+        {% if not guidebook.getFirstScene.start_x is None %}
+            init_start_x = {{ guidebook.getFirstScene.start_x }};
+            init_start_y = {{ guidebook.getFirstScene.start_y }};
+        {% endif %}
+        $('.small').each(function (i) {
+            $(this).removeClass('d-none');
+        });
+        $('.minimize-button').removeClass('d-none');
+    }
+
+    {% if not request.GET.image_key is None and request.GET.image_key != '' %}
+        init_node = "{{ request.GET.image_key }}";
+    {% endif %}
+
+    function enable_scene_form(id) {
+        var $form = $('#add_scene_form_' + id);
+        $form.find('input').each(function (index) {
+            $(this).attr('disabled', false)
+        });
+        $form.find('textarea').each(function (index) {
+            $(this).attr('disabled', false)
+        });
+        $form.find('select').each(function (index) {
+            $(this).attr('disabled', false)
+        });
+        $form.find('#save_scene_button').removeClass('d-none');
+        $form.find('#change_scene_button').addClass('d-none');
+    }
+
+    var mapillaryViewer = new Mapillary.Viewer(
+            'mapillary_image_box',
+            mapillaryClientId,
+            init_node,
+            {
+                component: {
+                    cover: false,
+                    tag: true,
+                },
+            }
+        );
+
+    var add_poi_icon = function() {
+        $('.TagVertex').each(function (i) {
+            $(this).html('<i class="fas fa-info-circle text-success" style="font-size: 50px"></i>')
+        });
+    }
+    if (init_node != null) {
+        mapillaryViewer.setCenter([init_start_x, init_start_y]);
+        add_poi_icon();
+    }
+
+    $('.scene-box').click(function () {
+        var image_key = $(this).data('image_key');
+        var $this = $(this);
+        mapillaryViewer.moveToKey(image_key).then((e) => {
+            var start_x = $this.find('input[name="start_x"]').val();
+            var start_y = $this.find('input[name="start_y"]').val();
+            mapillaryViewer.setCenter([start_x, start_y]);
+        });
+    });
+    function init_modal() {
+        if ($('.minimize-button').hasClass('d-none') && $('.maximize-button').hasClass('d-none'))
+        {
+            $('.small').each(function (i) {
+                $(this).removeClass('d-none');
+            });
+            $('.minimize-button').removeClass('d-none');
+        }
+    }
+    mapboxgl.accessToken = mapboxToken;
+    var zoom = 12;
+    if (scene_positions.length > 0)
+    {
+        var first_point = scene_positions[0];
+        init_modal();
+    }
+    else
+    {
+        var first_point = [-87.622088, 41.878781];
+    }
+    console.log('first_point', first_point)
+    var map = new mapboxgl.Map({
+        container: 'map', // container id
+        style: 'mapbox://styles/mapbox/streets-v11', //hosted style id
+        center: first_point, // starting position
+        zoom: zoom, // starting zoom
+    });
+
+    map.addControl(
+        new MapboxGeocoder({
+            accessToken: mapboxgl.accessToken,
+            localGeocoder: coordinatesGeocoder,
+            zoom: 1,
+            placeholder: 'Search Location',
+            mapboxgl: mapboxgl
+        }), 'top-left'
+    );
+
+    map.on("load", function() {
+        drawMapByUserKey('');
+    });
+
+    $('.mapboxgl-ctrl-geocoder--icon.mapboxgl-ctrl-geocoder--icon-search').click(function () {
+        var $locationSearchBar = $('.mapboxgl-ctrl-geocoder.mapboxgl-ctrl');
+        $locationSearchBar.each(function (index) {
+            if ($(this).hasClass('closed'))
+                $(this).removeClass('closed')
+            else
+                $(this).addClass('closed')
+        })
+    });
+
+    $('.username-search-bar input').change(function () {
+        var username = $(this).val();
+        if (username == '')
+            drawMapByUserKey('');
+        else
+            filterMapByUsername(username);
+    });
+
+    // Create a popup, but don't add it to the map yet.
+    var popup = new mapboxgl.Popup({
+      closeButton: false,
+      closeOnClick: false
+    });
+
+    map.on('mouseenter', 'mapillary-images', function(e) {
+        console.log(e.features)
+      // Change the cursor style as a UI indicator.
+      map.getCanvas().style.cursor = 'pointer';
+
+      var coordinates = e.features[0].geometry.coordinates.slice();
+      var key = e.features[0].properties.key;
+      var url = "https://images.mapillary.com/" + key + "/thumb-320.jpg";
+
+      // Ensure that if the map is zoomed out such that multiple
+      // copies of the feature are visible, the popup appears
+      // over the copy being pointed to.
+      while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
+        coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
+      }
+
+      // Populate the popup and set its coordinates
+      // based on the feature found.
+      popup.setLngLat(coordinates)
+      .setHTML("<img src='" + url + "' width='160'/>")
+      .addTo(map);
+    });
+
+    map.on('click', 'mapillary-images', function (e) {
+        var key = e.features[0].properties.key;
+        selected_poi_id = 0;
+        init_modal();
+        mapillaryViewer.resize();
+        mapillaryViewer.moveToKey(key);
+
+    });
+
+    map.on('mouseleave', 'mapillary-images', function() {
+        map.getCanvas().style.cursor = '';
+        popup.remove();
+    });
+
+    function filterMapByUsername(username) {
+        var url = "https://a.mapillary.com/v3/users?client_id=" + mapillaryClientId + "&usernames=" + username;
+        $.ajax({
+            url: url,
+            success: function(data){
+
+                console.log(data)
+                if (data.length > 0)
+                {
+                    var userkey = data[0]['key'];
+                    drawMapByUserKey(userkey);
+                }
+                else {
+                    if (map.getLayer('mapillary')) map.removeLayer('mapillary');
+                    if (map.getLayer('mapillary-images')) map.removeLayer('mapillary-images');
+                    if (map.getSource('mapillary-images')) map.removeSource('mapillary-images');
+                    if (map.getSource('mapillary-sequences')) map.removeSource('mapillary-sequences');
+                }
+            }
+        });
+    }
+
+    function drawMapByUserKey(userkey) {
+        console.log('userkey', userkey);
+        var filter = ['all',
+            ['==', 'userkey', userkey]
+        ]
+        if (typeof userkey == 'undefined' || userkey == '')
+            filter = ['all']
+
+        if (map.getLayer('mapillary')) map.removeLayer('mapillary');
+        if (map.getLayer('mapillary-images')) map.removeLayer('mapillary-images');
+        if (map.getSource('mapillary-images')) map.removeSource('mapillary-images');
+        if (map.getSource('mapillary-sequences')) map.removeSource('mapillary-sequences');
+
+        map.addSource('mapillary-sequences', {
+            "type": "vector",
+            "tiles": ["https://tiles3.mapillary.com/v0.1/{z}/{x}/{y}.mvt"],
+        });
+
+        map.addLayer({
+            "id": "mapillary",
+            "type": "line",
+            "source": 'mapillary-sequences',
+            "source-layer": 'mapillary-sequences',
+            'filter': filter,
+            "layout": {
+                "line-cap": "round",
+                "line-join": "round"
+            },
+            "paint": {
+                "line-opacity": 0.6,
+                "line-color": "#7880bd",
+                "line-width": 2
+            }
+        }, "waterway-label");
+
+        map.addSource('mapillary-images', {
+            "type": "vector",
+            "tiles": ["https://tiles3.mapillary.com/v0.1/{z}/{x}/{y}.mvt"],
+            "minzoom": 6,
+            "maxzoom": 14
+        });
+
+        map.addLayer({
+            "id": "mapillary-images",
+            "type": "circle",
+            "source": 'mapillary-images',
+            "source-layer": 'mapillary-images',
+            'filter': filter,
+            "paint": {
+                "circle-color": "#7880bd",
+                "circle-radius": 6
+            }
+        }, "waterway-label");
+    }
+
+    let mapillery_clicking = false;
+    mapillaryViewer.on('mousedown', function () {
+        mapillery_clicking = true;
+    });
+    mapillaryViewer.on('mousedown', function () {
+        mapillery_clicking = false;
+    });
+    mapillaryViewer.on('mousemove', function () {
+        if (mapillery_clicking)
+        {
+            refresh_mapillery_classes()
+        }
+    });
+
+
+    function clearSceneMedia() {
+        $('.scene-media-actions .add-actions').removeClass('d-none');
+        $('.scene-media-actions .delete-action').addClass('d-none');
+        $('.scene-added-media').html('');
+    }
+
+    mapillaryViewer.on(Mapillary.Viewer.nodechanged, function (node) {
+        current_node_point = [node.latLon.lat, node.latLon.lon];
+        current_node_key = node.key;
+        current_node_username = node.username;
+
+        clearSceneMedia()
+
+        var href = location.protocol + '//' + location.host + location.pathname;
+        history.pushState({
+            id: 'Guidebook Edit'
+        }, "{{ pageTitle }}", href + '?image_key=' + current_node_key);
+
+        current_order_number = key_list.indexOf(current_node_key);
+        $.ajax({
+            url: "{% url 'guidebook.ajax_get_edit_scene' unique_id=guidebook.unique_id %}",
+            type: 'GET',
+            data: {'image_key': node.key},
+            dataType: 'json',
+            success: function (data) {
+                if (data.status == 'failed')
+                {
+                    new_scene();
+                    $('#id_new_image_key').val(node.key);
+                    $('#id_new_lat').val(current_node_point[0]);
+                    $('#id_new_lng').val(current_node_point[1]);
+                    $('#id_new_username').val(node.username);
+                }
+                else {
+                    current_scene_id = data.scene[0].pk;
+                    old_scene();
+                    var position_x = 0;
+                    var position_y = 0;
+                    $('#poi_list').html('');
+                    for (i = 0; i < data.poi_list.length; i++)
+                    {
+                        position_x = data.poi_list[i].poi[0].fields.position_x;
+                        position_y = data.poi_list[i].poi[0].fields.position_y;
+                        var spotTag = new Mapillary.TagComponent.PointGeometry([position_x, position_y]);
+                        add_tag(data.poi_list[i], spotTag);
+                    }
+                    refresh_poi_list();
+                    refresh_mapillery_classes();
+
+                    $('.external-scene').html(data.scene_external_html);
+                    console.log(data.scene)
+
+                    var scene_image = '';
+                    if (data.scene[0]['fields']['image'] != null && data.scene[0]['fields']['image'] != '')
+                        scene_image = '{{ STATIC_URL }}' + data.scene[0]['fields']['image'];
+                    var resp = {'poi_image': '', 'poi_video': '', 'scene_image': scene_image, 'scene_video': data.scene[0]['fields']['video_url']}
+
+
+
+                    updateMediaBox(resp, true);
+                }
+                set_select_scene();
+                if (is_show_poi_list) {
+                    show_poi_list(current_scene_id);
+                }
+                if (current_order_number < 0) {
+                    $('.poi-list').addClass('d-none');
+                }
+                else {
+                    $('.poi-list').removeClass('d-none');
+                }
+            }
+        });
+    });
+
+     function set_select_scene() {
+        $('.scene-box.selected').removeClass('selected');
+        $('#scene_' + current_scene_id).addClass('selected');
+        if (current_scene_id != 0 || current_scene_id != '0')
+        {
+            $('#add_scene_form_0').find('input').each(function (index) {
+                $(this).attr('disabled', true);
+            });
+            $('#add_scene_form_0').find('select').each(function (index) {
+                $(this).attr('disabled', true);
+            });
+            $('#add_scene_form_0').find('textarea').each(function (index) {
+                $(this).attr('disabled', true);
+            });
+            $('#add_scene_form_0').find('#save_scene_button').attr('disabled', true);
+            $('.add-scene-form p.error').removeClass('d-none');
+            if (!is_show_poi_list) {
+                $('.small-screen').removeClass('d-none');
+                $('.minimize-button').removeClass('d-none');
+            }
+        }
+        else {
+            $('#add_scene_form_0').find('input').each(function (index) {
+                $(this).attr('disabled', false);
+            });
+            $('#add_scene_form_0').find('select').each(function (index) {
+                $(this).attr('disabled', false);
+            });
+            $('#add_scene_form_0').find('textarea').each(function (index) {
+                $(this).attr('disabled', false);
+            });
+            $('#add_scene_form_0').find('#save_scene_button').attr('disabled', false);
+
+            $('.add-scene-form p.error').addClass('d-none');
+        }
+    }
+
+    $.ajax({
+        url: "{% url 'guidebook.ajax_get_scene_list' unique_id=guidebook.unique_id %}",
+        type: 'GET',
+        data: {},
+        dataType: 'json',
+        success: function (data) {
+            if (data.status == 'failed')
+            {
+                toastr.error(data.message)
+            }
+            else {
+                console.log(data)
+            }
+        }
+    });
+
+    var is_mapillary_viewer = false;
+
+    $('.switch_screen').click(function () {
+         var full_screen = $('.full-screen');
+         var small_screen = $('.small-screen');
+         full_screen.removeClass('full-screen').removeClass('board-w-400').addClass('small-screen').addClass('small');
+         small_screen.removeClass('small-screen').removeClass('small').addClass('full-screen').addClass('board-w-400');
+         $('.switch_screen').each(function (i) {
+             $(this).removeClass('d-none');
+         });
+         $(this).addClass('d-none');
+
+         if (is_mapillary_viewer)
+         {
+             is_mapillary_viewer = false;
+             $('.maximize-button img').attr('src', "{% static 'images/icon/restore_viewer.svg' %}")
+         }
+         else
+         {
+             is_mapillary_viewer = true;
+             $('.maximize-button img').attr('src', "{% static 'images/icon/restore_map.svg' %}")
+         }
+
+         if (!$('.left-side.poi-box').hasClass('d-none')) {
+            $('.board-w-400').removeClass('board-w-400');
+            $('.full-screen').addClass('board-w-400');
+         }
+         mapillaryViewer.resize();
+         map.resize();
+    });
+
+    function set_starting_view() {
+        mapillaryViewer.getCenter().then((c) => {
+            var image_key = $('#add_scene_form_' + current_scene_id + ' [name="image_key"]').val();
+            $.ajax({
+                url: "{% url 'guidebook.ajax_set_start_view' unique_id=guidebook.unique_id %}",
+                type: 'POST',
+                data: {image_key: image_key, start_x: c[0], start_y: c[1]},
+                dataType: 'json',
+                success: function (data) {
+                    if (data.status == 'failed')
+                        toastr.error(data.message);
+                    else
+                    {
+                        $('#add_scene_form_' + current_scene_id + ' [name="start_x"]').val(c[0])
+                        $('#add_scene_form_' + current_scene_id + ' [name="start_y"]').val(c[1])
+                        toastr.success(data.message);
+                    }
+                }
+            });
+        });
+    }
+
+    function saveScene(url, id = 0) {
+
+        if ($('#add_scene_form_' + id + ' [name="image_key"]').val() == '')
+        {
+            toastr.error('Please select scene!.');
+            return;
+        }
+        if ($('#add_scene_form_' + id + ' [name="title"]').val() == '')
+        {
+            toastr.error('Scene title is required!.');
+            return;
+        }
+        mapillaryViewer.getCenter().then((c) => {
+            var $form = $('#add_scene_form_' + id);
+            console.log($form.serialize())
+            $.ajax({
+                url: url,
+                type: 'POST',
+                data: $form.serialize(),
+                dataType: 'json',
+                success: function (data) {
+                    if (data.status == 'failed')
+                        toastr.error(data.message);
+                    else
+                    {
+                        toastr.success(data.message);
+                        console.log(data);
+                        current_scene_id = data.scene_id;
+                        old_scene();
+                        var scene_box_html = data.scene_box_html;
+                        var scene_count = data.scene_count;
+                        if (typeof scene_box_html != "undefined" && data.type == 'new')
+                        {
+                            $('#scene_list').append(scene_box_html);
+                            reorder_scene();
+                            $('.publish-guidebook').removeClass('d-none');
+                            $('.guidebook-others .scenes span').text(data.scene_count + " Photos");
+                            set_delete_scene();
+                            $('.publish-guidebook').removeClass('d-none');
+                            {#$('.add-new-scene').removeClass('d-none');#}
+                            {#$('.new-scene-box').addClass('d-none');#}
+                            console.log(scene_box_html);
+                            set_select_scene();
+                            $('.poi-list').removeClass('d-none');
+                            key_list.push(current_node_key);
+                            $('#poi_list').html('');
+                            showPOIList(current_scene_id);
+                        }
+                        else if (data.type == 'update')
+                        {
+                            $('#scene_' + data.scene_id + ' .scene-title').html('<h6>' + data.title + '</h6>');
+                            $('#scene_' + data.scene_id + ' .scene-description').html('<span>' + data.description + '</span>');
+                            var $form = $('#add_scene_form_' + data.scene_id);
+                            $form.find('input').each(function (index) {
+                                $(this).attr('disabled', true)
+                            });
+                            $form.find('textarea').each(function (index) {
+                                $(this).attr('disabled', true)
+                            });
+                            $form.find('select').each(function (index) {
+                                $(this).attr('disabled', true)
+                            });
+                            $form.find('#save_scene_button').addClass('d-none');
+                            $form.find('#change_scene_button').removeClass('d-none');
+                            console.log(scene_box_html);
+                            set_select_scene();
+                        }
+
+                        $('.external-scene').html(data.scene_external_html);
+
+                        var scene_image = '';
+                        if (data.scene[0]['fields']['image'] != null && data.scene[0]['fields']['image'] != '')
+                            scene_image = '{{ STATIC_URL }}' + data.scene[0]['fields']['image'];
+                        var resp = {'poi_image': '', 'poi_video': '', 'scene_image': scene_image, 'scene_video': data.scene[0]['fields']['video_url']}
+                        updateMediaBox(resp, true);
+
+                    }
+                }
+            });
+        });
+    }
+
+    function showOrHide() {
+        if ($('.minimize-button').hasClass('d-none') && $('.maximize-button').hasClass('d-none'))
+        {
+            $('.small').each(function (i) {
+                $(this).removeClass('d-none');
+            });
+            $('.minimize-button').removeClass('d-none');
+        }
+        else {
+            if ($('.minimize-button').hasClass('d-none'))
+            {
+                $('.minimize-button').removeClass('d-none');
+                $('.maximize-button').addClass('d-none');
+                $('.small').each(function (i) {
+                    $(this).removeClass('d-none');
+                });
+                mapillaryViewer.resize();
+                map.resize();
+            }
+            else if ($('.maximize-button').hasClass('d-none'))
+            {
+                $('.maximize-button').removeClass('d-none');
+                $('.minimize-button').addClass('d-none');
+                $('.small').each(function (i) {
+                    $(this).addClass('d-none');
+                });
+            }
+        }
+
+    }
+
+    // Retrieve tag component
+    var tagComponent = mapillaryViewer.getComponent("tag");
+
+    // Change mode on button clicks
+    function changeMode(tagMode) {
+        tagComponent.changeMode(tagMode);
+    }
+
+    // Create and add editable tags based on created geometry type
+    var createdIndex = 0;
+    var tags = [];
+    var is_existing_new_point = false;
+    function add_new_poi() {
+        toastr.info("Now click a location on the image to highlight your POI")
+        changeMode(Mapillary.TagComponent.TagMode.CreatePoint);
+    }
+    tagComponent.on(Mapillary.TagComponent.TagComponent.geometrycreated, function(geometry) {
+        $.ajax({
+            url: 'ajax/save_poi/' + current_scene_id + '/',
+            type: 'POST',
+            data: {
+                'type': 'new',
+                'position_x': geometry.point[0],
+                'position_y': geometry.point[1],
+            },
+            dataType: 'json',
+            success: function (data) {
+                if (data.status == 'failed')
+                    toastr.error(data.message);
+                else
+                {
+                    console.log(data);
+                    add_tag(data, geometry);
+                    $('#scene_' + current_scene_id).find('button.point_list').text("Edit POI's (" + data.poi_count + ")");
+                    refresh_poi_list(true);
+                    refresh_mapillery_classes();
+                    $('.left-side.poi-box').removeClass('d-none');
+                }
+            }
+        });
+
+    });
+
+    function add_tag(data, geometry) {
+        $('#poi_list').prepend(data.poi_box_html);
+        var id = data.poi[0].pk;
+        var tag = new Mapillary.TagComponent.SpotTag(id, geometry, { editable: true});
+        var onTagGeometryChanged = function(tag) {
+            var poi_form = $('#poi_body_' + tag.id).find('form');
+            poi_form.find('.position-x').text(tag.geometry.point[0]);
+            poi_form.find('.position-y').text(tag.geometry.point[1]);
+        };
+        tag.on(Mapillary.TagComponent.OutlineTag.geometrychanged, onTagGeometryChanged);
+        tagComponent.add([tag]);
+    }
+
+    mapillaryViewer.on("mousemove", add_poi_icon);
+    mapillaryViewer.on("mouseover", add_poi_icon);
+    mapillaryViewer.on("mousedown", add_poi_icon);
+    mapillaryViewer.on("mouseup", add_poi_icon);
+    function refresh_poi_list(show = false) {
+        add_poi_icon();
+        $('.collapse-button').off('click');
+        $('.collapse-button').click(function () {
+            selected_poi_id = $(this).data('poi-id');
+
+            if (!poi_clicking) {
+                var position_x = $('#poi_body_' + selected_poi_id).find('.position-x').text();
+                var position_y = $('#poi_body_' + selected_poi_id).find('.position-y').text();
+                mapillaryViewer.setCenter([position_x, position_y])
+            }
+
+            $('.TagVertex.selected').each(function (i) {
+                $(this).removeClass('selected');
+            });
+            if ($('#poi_body_' + selected_poi_id).hasClass('show'))
+            {
+                selected_poi_id = 0;
+                $('.delete-icon').addClass('disabled');
+            }
+            else
+            {
+                $('#tagVertex_' + selected_poi_id).addClass('selected');
+                $('.delete-icon').removeClass('disabled');
+            }
+        });
+        if (show)
+            $('#poi_list').find('.card-header').eq(0).find('button').trigger('click');
+        $('.save-poi-button').off('click');
+        $('.save-poi-button').click(function () {
+            var poi_id = $(this).data('poi-id');
+            var poi_form = $('#poi_' + poi_id).find('form');
+            var title = poi_form.find("input[name=title]").val();
+            var description = poi_form.find("textarea[name=description]").val();
+            var category_id = poi_form.find("select[name=category]").val();
+            var external_url = poi_form.find("input[name=external_url]").val();
+            $.ajax({
+                url: 'ajax/save_poi/' + current_scene_id + '/',
+                type: 'POST',
+                data: {
+                    'type': 'update',
+                    'poi_id': poi_id,
+                    'title': title,
+                    'category_id': category_id,
+                    'description': description,
+                    'external_url': external_url
+                },
+                dataType: 'json',
+                success: function (data) {
+                    if (data.status == 'failed')
+                        toastr.error(data.message);
+                    else {
+                        toastr.success(data.message);
+                        $('#poi_header_' + poi_id).find('button').text(title)
+                    }
+                }
+            });
+        });
+        $('.delete-poi-button').off('click');
+        $('.delete-poi-button').click(function () {
+            var poi_id = $(this).attr('data-poi-id');
+            if ($(this).hasClass('disabled') || $(this).hasClass('d-none'))
+                return;
+            Swal.fire({
+                title: 'Are you sure?',
+                text: "You won't be able to revert this!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Yes, delete it!'
+            }).then((result) => {
+                if (result.value) {
+                     $.ajax({
+                        url: 'ajax/delete_poi/' + current_scene_id + '/',
+                        type: 'POST',
+                        data: {
+                            'poi_id': selected_poi_id,
+                        },
+                        dataType: 'json',
+                        success: function (data) {
+                            if (data.status == 'failed')
+                                toastr.error(data.message);
+                            else
+                            {
+                                toastr.success(data.message);
+                                $('#poi_' + selected_poi_id).remove();
+                                tagComponent.remove([selected_poi_id]);
+                                selected_poi_id = 0;
+                                $('#scene_' + current_scene_id).find('button.point_list').text("Edit POI's (" + data.poi_count + ")");
+                                $('.delete-icon').addClass('disabled');
+                                refresh_mapillery_classes();
+                            }
+                        }
+                    });
+                }
+            })
+        })
+    }
+
+    function validURL(str) {
+      var pattern = new RegExp('^(https?:\\/\\/)?'+ // protocol
+        '((([a-z\\d]([a-z\\d-]*[a-z\\d])*)\\.)+[a-z]{2,}|'+ // domain name
+        '((\\d{1,3}\\.){3}\\d{1,3}))'+ // OR ip (v4) address
+        '(\\:\\d+)?(\\/[-a-z\\d%_.~+]*)*'+ // port and path
+        '(\\?[;&a-z\\d%_.~+=-]*)?'+ // query string
+        '(\\#[-a-z\\d_]*)?$','i'); // fragment locator
+      return !!pattern.test(str);
+    }
+
+    function addExternalURL(poi_id) {
+        let external_url = $('#input_external_url_' + poi_id).val();
+        if (validURL(external_url)) {
+            $.ajax({
+                url: 'ajax/add_external_url/' + current_scene_id + '/',
+                type: 'POST',
+                data: {
+                    'poi_id': selected_poi_id,
+                    'external_url': external_url
+                },
+                dataType: 'json',
+                success: function (data) {
+                    if (data.status == 'failed')
+                        toastr.error(data.message);
+                    else
+                    {
+                        toastr.success(data.message);
+                        let external_url_li = '<li id="external_url_'+data.external_url_id+'">\n' +
+                            '                     <a href="'+external_url+'" target="_blank">'+data.short_external_url+'</a>\n' +
+                            '                         <i class="far fa-times-circle" onclick="deleteExternalURL(\''+poi_id+'\', \''+data.external_url_id+'\')" style="font-size: 15px; cursor: pointer"></i>\n' +
+                            '                  </li>';
+                        $('#poi_body_' + poi_id + ' .external-url-list ul').append(external_url_li);
+                        $('#input_external_url_' + poi_id).val('');
+                    }
+                }
+            });
+        }
+        else {
+            toastr.error('The external URL is invalid.');
+        }
+    }
+
+    function deleteExternalURL(poi_id, external_url_id) {
+        $.ajax({
+            url: 'ajax/delete_external_url/' + current_scene_id + '/',
+            type: 'POST',
+            data: {
+                'poi_id': poi_id,
+                'external_url_id': external_url_id
+            },
+            dataType: 'json',
+            success: function (data) {
+                if (data.status == 'failed')
+                    toastr.error(data.message);
+                else
+                {
+                    toastr.success(data.message);
+                    $('#external_url_' + external_url_id).remove();
+                }
+            }
+        });
+    }
+
+    function addSceneExternalURL() {
+        let external_url = $('#input_scene_external_url_' + current_scene_id).val();
+        if (validURL(external_url)) {
+            $.ajax({
+                url: 'ajax/add_scene_external_url/' + current_scene_id + '/',
+                type: 'POST',
+                data: {
+                    'external_url': external_url
+                },
+                dataType: 'json',
+                success: function (data) {
+                    if (data.status == 'failed')
+                        toastr.error(data.message);
+                    else
+                    {
+                        toastr.success(data.message);
+                        let external_url_li = '<li id="scene_external_url_'+data.external_url_id+'">\n' +
+                            '                     <a href="'+external_url+'" target="_blank">'+data.short_external_url+'</a>\n' +
+                            '                         <i class="far fa-times-circle" onclick="deleteSceneExternalURL(\''+data.external_url_id+'\')" style="font-size: 15px; cursor: pointer"></i>\n' +
+                            '                  </li>';
+                        $('.scene-external-url-list ul').append(external_url_li);
+                        $('#input_scene_external_url_' + current_scene_id).val('');
+                    }
+                }
+            });
+        }
+        else {
+            toastr.error('The external URL is invalid.');
+        }
+    }
+
+    function deleteSceneExternalURL(external_url_id) {
+        $.ajax({
+            url: 'ajax/delete_scene_external_url/' + current_scene_id + '/',
+            type: 'POST',
+            data: {
+                'external_url_id': external_url_id
+            },
+            dataType: 'json',
+            success: function (data) {
+                if (data.status == 'failed')
+                    toastr.error(data.message);
+                else
+                {
+                    toastr.success(data.message);
+                    $('#scene_external_url_' + external_url_id).remove();
+                }
+            }
+        });
+    }
+
+    function refresh_mapillery_classes() {
+
+        $('.TagSpotInteractor').off('mousedown');
+        $('.TagSpotInteractor').mousedown(function () {
+            var id = $(this).attr('id');
+            var tagVertex_id = id.replace('tagSpotInteractor', 'tagVertex');
+
+            if (tagVertex_id != $('.TagVertex.selected').attr('id'))
+                $('.TagVertex.selected').removeClass('selected');
+
+            $('#' + tagVertex_id).addClass('selected');
+            var poi_id = id.replace('tagSpotInteractor_', '');
+            selected_poi_id = poi_id;
+            console.log('TagSpot', selected_poi_id);
+            poi_clicking = true;
+            if (!$('#poi_body_' + poi_id).hasClass('show'))
+                $('#poi_' + poi_id).find('.card-header').find('button').trigger('click');
+            $('.left-side.poi-box').removeClass('d-none');
+        });
+        $('.TagSpotInteractor').off('mouseup');
+        $('.TagSpotInteractor').mouseup(function () {
+            poi_clicking = false;
+            if (selected_poi_id == 0)
+                return;
+            var poi_id = selected_poi_id;
+            var poi_form = $('#poi_body_' + poi_id).find('form');
+            var position_x = poi_form.find(".position-x").text();
+            var position_y = poi_form.find(".position-y").text();
+            $.ajax({
+                url: 'ajax/save_poi/' + current_scene_id + '/',
+                type: 'POST',
+                data: {
+                    'type': 'move',
+                    'poi_id': poi_id,
+                    'position_x': position_x,
+                    'position_y': position_y,
+                },
+                dataType: 'json',
+                success: function (data) {
+                    if (data.status == 'failed')
+                        toastr.error(data.message);
+                    /*********
+                    else {
+                        {#toastr.success(data.message);#}
+                    }
+                     *********/
+                }
+            });
+        });
+        {#if ($('#poi_list').html() == '' || selected_poi_id == 0)#}
+        {#    $('.delete-icon').addClass('disabled');#}
+        {#else#}
+        {#    $('.delete-icon').removeClass('disabled');#}
+    }
+
+    // Tags are related to a specific node, remove them when node changes
+    mapillaryViewer.on(Mapillary.Viewer.nodechanged, function(node) {
+        tagComponent.removeAll();
+    });
+
+    function new_scene() {
+        $('.delete-icon').addClass('disabled');
+        $('.poi-icon').addClass('d-none');
+        $('.delete-icon').addClass('d-none');
+        $('#id_new_title').val('');
+        $('#id_new_description').val('');
+        current_scene_id = 0;
+    }
+
+    function old_scene() {
+        $('.poi-icon').removeClass('d-none');
+        $('.delete-icon').removeClass('d-none');
+        $('#id_new_image_key').val('');
+        $('#id_new_lat').val('');
+        $('#id_new_lng').val('');
+        $('#id_new_title').val('');
+        $('#id_new_description').val('');
+    }
+
+    function new_poi() {
+        $('#save_poi_button').text('Save');
+        $('#add_poi_form').find("input[type=text], textarea").val("");
+    }
+
+    function old_poi() {
+        $('#save_poi_button').text('Update');
+        $('#add_poi_form').find("input[type=text], textarea").val("");
+    }
+
+    function save_poi() {
+        console.log('test')
+    }
+
+    var showPOIList = function(scene_id) {
+        current_scene_id = scene_id;
+        is_show_poi_list = true;
+        show_poi_list(current_scene_id);
+    }
+
+    function show_poi_list(scene_id) {
+        $('.left-side.poi-box').removeClass('d-none');
+        var title = $('#scene_' + scene_id).find('input[name="title"]').val();
+        var description = $('#scene_' + scene_id).find('textarea[name="description"]').val();
+        $('.poi-header .scene-title').text(title);
+        $('.poi-header .scene-description').text(description);
+
+        if ($('#mapillary_image_box').parent().hasClass('small-screen'))
+            $('#mapillary_image_box').parent().find('.switch-full-screen').trigger('click');
+        $('.full-screen').addClass('board-w-400');
+        if (!$('.minimize-button').hasClass('d-none'))
+            $('.minimize-button').trigger('click');
+        mapillaryViewer.resize();
+        map.resize();
+        only_show_mapillary();
+    }
+
+    function only_show_mapillary() {
+        $('.minimize-button').addClass('d-none');
+        $('.maximize-button').addClass('d-none');
+        $('.small-screen').addClass('d-none');
+        if (!is_mapillary_viewer) {
+            $('.switch_screen').trigger('click');
+            is_mapillary_viewer = true;
+        }
+    }
+
+    function only_show_minimize() {
+        $('.minimize-button').removeClass('d-none');
+        $('.maximize-button').addClass('d-none');
+        $('.small-screen').addClass('d-none');
+    }
+
+    function only_show_map() {
+        if (is_mapillary_viewer)
+        {
+            is_mapillary_viewer = false;
+            $('.switch_screen').eq(1).trigger('click');
+        }
+        $('.minimize-button').addClass('d-none');
+        $('.maximize-button').addClass('d-none');
+        $('.small-screen').addClass('d-none');
+    }
+
+    $('.delete-icon').click(function () {
+        if ($(this).hasClass('disabled') || $(this).hasClass('d-none'))
+            return;
+        Swal.fire({
+            title: 'Are you sure?',
+            text: "You won't be able to revert this!",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Yes, delete it!'
+        }).then((result) => {
+            if (result.value) {
+                 $.ajax({
+                    url: 'ajax/delete_poi/' + current_scene_id + '/',
+                    type: 'POST',
+                    data: {
+                        'poi_id': selected_poi_id,
+                    },
+                    dataType: 'json',
+                    success: function (data) {
+                        if (data.status == 'failed')
+                            toastr.error(data.message);
+                        else
+                        {
+                            toastr.success(data.message);
+                            $('#poi_' + selected_poi_id).remove();
+                            tagComponent.remove([selected_poi_id]);
+                            selected_poi_id = 0;
+                            $('.delete-icon').addClass('disabled');
+                            refresh_mapillery_classes();
+                        }
+                    }
+                });
+            }
+        })
+    });
+
+    function set_delete_scene() {
+        $('.delete_scene_button').off('click');
+        $('.delete_scene_button').click(function () {
+            var scene_id = $(this).attr('data-scene-id');
+            Swal.fire({
+                title: 'Are you sure?',
+                text: "You won't be able to revert this!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Yes, delete it!'
+            }).then((result) => {
+                if (result.value) {
+                     $.ajax({
+                        url: 'ajax/delete_scene/' + scene_id + '/',
+                        type: 'POST',
+                        data: {},
+                        dataType: 'json',
+                        success: function (data) {
+                            if (data.status == 'failed')
+                                toastr.error(data.message);
+                            else
+                            {
+
+                                toastr.success(data.message);
+                                $('#scene_' + scene_id).parent().remove();
+                                if ($('.scene-list').html() == '') {
+                                    $('#publish_swithch_guidebook').removeClass('btn-secondary').addClass('btn-success').text('Publish Now');
+                                }
+                                key_list.splice(current_order_number, 1);
+                                sceneData.splice(current_order_number, 1);
+                                scene_positions.splice(current_order_number, 1);
+
+                                new_scene();
+                                $('#id_new_image_key').val(current_node_key);
+                                $('#id_new_lat').val(current_node_point[0]);
+                                $('#id_new_lng').val(current_node_point[1]);
+                                $('.guidebook-others .scenes span').text(data.scene_count + " Photos");
+                                if (data.scene_count == 0)
+                                {
+                                    $('.publish-guidebook').addClass('d-none');
+                                    $('.publish-guidebook').find('button').removeClass('btn-secondary').addClass('btn-success').text('Publish Now');
+                                }
+                                reorder_scene();
+                                set_select_scene();
+                                set_delete_scene();
+                                tagComponent.removeAll();
+                            }
+                        }
+                    });
+                }
+            })
+        });
+    }
+    set_delete_scene();
+
+    $('#delete_guidebook').click(function () {
+        if ($(this).hasClass('disabled') || $(this).hasClass('d-none'))
+            return;
+        Swal.fire({
+            title: 'Are you sure?',
+            text: "You won't be able to revert this!",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Yes, delete it!'
+        }).then((result) => {
+            if (result.value) {
+                 $('#delete_guidebook_form').submit();
+            }
+        })
+    });
+
+    $('.add-new-scene button').click(function () {
+        $('.new-scene-box').removeClass('d-none');
+        $('.add-new-scene').addClass('d-none');
+        $('#add_scene_form_0').find('input').each(function (index) {
+                $(this).attr('disabled', true);
+            });
+        $('#add_scene_form_0').find('select').each(function (index) {
+            $(this).attr('disabled', true);
+        });
+        $('#add_scene_form_0').find('textarea').each(function (index) {
+            $(this).attr('disabled', true);
+        });
+        $('#add_scene_form_0').find('#save_scene_button').attr('disabled', true);
+        only_show_map();
+    });
+
+    $('#add_scene_form_0 .cancel').click(function () {
+        $('.new-scene-box').addClass('d-none');
+        $('.add-new-scene').removeClass('d-none');
+        $('#add_scene_form_0').find('input').each(function (index) {
+                $(this).attr('disabled', true);
+            });
+        $('#add_scene_form_0').find('select').each(function (index) {
+            $(this).attr('disabled', true);
+        });
+        $('#add_scene_form_0').find('textarea').each(function (index) {
+            $(this).attr('disabled', true);
+        });
+        $('#add_scene_form_0').find('#save_scene_button').attr('disabled', true);
+    });
+
+    $('#publish_swithch_guidebook').click(function () {
+        $.ajax({
+            url: "{% url 'guidebook.check_publish' unique_id=guidebook.unique_id %}",
+            type: 'POST',
+            data: {},
+            dataType: 'json',
+            success: function (data) {
+                if (data.status == 'failed')
+                {
+                    toastr.error(data.message)
+                }
+                else {
+                    if (data.is_published)
+                    {
+                        $('#publish_swithch_guidebook').removeClass('btn-success').addClass('btn-secondary').text('Unpublish');
+                    }
+                    else
+                    {
+                        $('#publish_swithch_guidebook').removeClass('btn-secondary').addClass('btn-success').text('Publish Now');
+                    }
+                }
+            }
+        });
+    });
+
+    window.addEventListener('resize', function() { mapillaryViewer.resize(); map.resize(); });
+
+    function getPos(a, b) { // a == topPos, b == selectionHeight
+        return Math.round((a / b) + 1);
+    }
+
+    function moveThings(a, b, c) { // a == oldPos, b == newPos, c == selectedHeight
+        var first = 'item_' + (b - 1);
+        var $newEl = $('.list_container .' + first);
+
+        if (a < b) { // oldPos less than newPos
+            var second = 'item_' + (b - 2);
+            var newTop = parseInt($newEl.css('top')) - c;
+        } else { // oldPos more than newPos
+            var second = 'item_' + b;
+            var newTop = parseInt($newEl.css('top')) + c;
+        }
+
+        $newEl.css('top', parseInt($newEl.css('top')));
+        $newEl.removeClass(first);
+        $newEl.animate({
+            top: newTop
+        }, 300, function () {
+            $newEl.removeAttr('style');
+        });
+        $newEl.addClass(second);
+
+        return false; // Cleans up animations
+    }
+
+    function setNewClass(e, a) { // e == selected element, a == newPos
+        e.attr('class', 'list_item').addClass('item_' + (a - 1));
+    }
+
+    var item_list = [];
+
+    var margin = 0;
+    var margin_top = 0;
+    var $el;
+    var oldPos = 0;
+    var newPos = 0;
+    var dragging = false;
+
+    var classInfo = '';
+    var item_count = 0;
+
+    var selectionHeight = 182;
+    for (var i = 0; i < 200; i ++) {
+        classInfo += '.' + 'item_' + i + ' {top: ' + (margin_top + i * selectionHeight) + 'px;}\n';
+    }
+    var style = document.createElement('style');
+    style.type = 'text/css';
+    style.innerHTML = classInfo;
+    document.getElementsByTagName('head')[0].appendChild(style);
+    var order_ary = [];
+    var old_item_class = '';
+    function  reorder_scene() {
+        add_poi_icon();
+        item_count = $('.list_container .list_item').length;
+        $('.list_container').height(selectionHeight * item_count);
+        item_list = [];
+        for (var i = 0; i < order_ary.length; i++)
+        {
+            if (typeof $('.list_item.item_' + i).html() != "undefined")
+                item_list.push($('.list_item.item_' + i).html())
+        }
+
+        $('.list_container .list_item').each(function (index) {
+            $(this).attr('class', 'list_item');
+            $(this).attr('style', '');
+            $(this).addClass('item_' + index);
+            if (typeof item_list[index] != "undefined")
+            {
+                console.log('test');
+                $(this).html(item_list[index]);
+            }
+        });
+
+        $('.scene-box').off('click');
+        $('.scene-box').click(function () {
+            var image_key = $(this).data('image_key');
+            current_scene_id = $(this).attr('data-scene-id');
+            var $this = $(this);
+            console.log(current_scene_id)
+            if (current_scene_id != '0' && current_scene_id != 0)
+                mapillaryViewer.moveToKey(image_key).then((e) => {
+                    var start_x = $this.find('input[name="start_x"]').val();
+                    var start_y = $this.find('input[name="start_y"]').val();
+                    console.log(start_x)
+                    mapillaryViewer.setCenter([start_x, start_y]);
+                });
+        });
+
+        $('.list_item').off('mousedown');
+        $('.list_item').mousedown(function (ev) {
+            $el = $(this);
+            old_item_class = $(this).attr('class');
+            oldPos = $el.index() + 1;
+            newPos = oldPos;
+            dragging = true;
+            startY = ev.clientY;
+            startT = parseInt($el.css('top'));
+            $el.addClass('selected');
+        });
+    }
+
+    $(window).mousemove(function (ev) {
+        if (dragging) {
+            $el.attr('class', 'list_item')
+            $el.addClass('selected');
+
+            // ----- calculate new top
+            var newTop = startT + (ev.clientY - startY);
+            $el.css('cursor', 'pointer');
+            // ------
+
+            //------ stay in parent
+            var maxTop = $el.parent().height() - $el.height();
+            newTop = newTop < 0 ? 0 : newTop > maxTop ? maxTop : newTop;
+            $el.css('top', newTop);
+            //------
+
+            newPos = getPos(newTop, selectionHeight);
+
+            if (oldPos != newPos) {
+                moveThings(oldPos, newPos, selectionHeight);
+                oldPos = newPos;
+            }
+        }
+    }).mouseup(function (ev) {
+        if (dragging) {
+            $el.attr('class', 'list_item')
+            $el.addClass('selected');
+
+            // ----- calculate new top
+            var newTop = startT + (ev.clientY - startY);
+            $el.css('cursor', 'pointer');
+            // ------
+
+            //------ stay in parent
+            var maxTop = $el.parent().height() - $el.height();
+            newTop = newTop < 0 ? 0 : newTop > maxTop ? maxTop : newTop;
+            $el.css('top', newTop);
+            //------
+
+            newPos = getPos(newTop, selectionHeight);
+
+            if (oldPos != newPos) {
+                moveThings(oldPos, newPos, selectionHeight);
+                oldPos = newPos;
+            }
+            dragging = false;
+            $el.removeClass('selected');
+            setNewClass($el, newPos);
+            $el.css('top', (newPos - 1) * selectionHeight);
+
+            var order_list = '';
+            var scene_id = 0;
+            order_ary = [];
+            for (var i = 0; i < item_count; i++) {
+                scene_id = $('.list_item.item_' + i).find('.scene-box').attr('data-scene-id');
+                if (order_list == '')
+                    order_list = scene_id;
+                else
+                    order_list += "," + scene_id;
+                order_ary.push(scene_id);
+            }
+            if ($el.attr('class') != old_item_class)
+                $.ajax({
+                    url: '{% url "guidebook.ajax_order_scene" unique_id=guidebook.unique_id %}',
+                    type: 'POST',
+                    data: {'order_list': order_list},
+                    dataType: 'json',
+                    success: function (data) {
+                        if (data.status == 'failed')
+                            toastr.error(data.message);
+                        else
+                        {
+                            toastr.success(data.message);
+                        }
+                    }
+                });
+        }
+    });
+
+    reorder_scene()
+
+    Dropzone.autoDiscover = false;
+    let server_image = false;
+
+    let myDropzone = new Dropzone(".dropzone", {
+        autoProcessQueue: false,
+        uploadMultiple: false,
+        parallelUploads: 1,
+        paramName: "image", // The name that will be used to transfer the file
+        maxFilesize: 20,
+        {#addRemoveLinks: true,#}
+        maxFiles: 1,
+        thumbnailWidth: 200,
+        thumbnailHeight: 200,
+        sending: function(file, xhr, formData) {
+            formData.append("csrfmiddlewaretoken", '{{ csrf_token }}');
+        },
+        init: function() {
+            this.on("maxfilesexceeded", function(file) {
+                this.removeAllFiles();
+                this.addFile(file);
+            });
+            this.on("success", function(file, response) {
+                updateMediaBox(response);
+                toastr.success('A picture is updated successfully.');
+            });
+            this.on("thumbnail", function(file, dataUrl) {
+                $('.dz-image').css('border-radius', '0px');
+                $('.dz-image img').css('width', '100%');
+                $('.dz-image img').css('height', '100%');
+                $('.dz-details').remove();
+                $('.dropzone .dz-preview').off('hover');
+            });
+            this.on('addedfile', function () {
+                $('#uploadfile').removeClass('d-none');
+                $('#removefile').removeClass('d-none');
+                if (server_image)
+                    $('#cancelfile').removeClass('d-none');
+                else
+                    $('#cancelfile').addClass('d-none');
+            });
+            this.on('removedfile', function () {
+                $('#uploadfile').addClass('d-none');
+                $('#removefile').addClass('d-none');
+            });
+            this.on('complete', function () {
+                var h = $('.dz-image').html();
+                $('.dz-image-cover').html(h);
+                server_image = true;
+                this.removeAllFiles();
+                $('#cancelfile').addClass('d-none');
+                $('#uploadPictureModal').modal('hide');
+                $('#user_cover_image').removeClass('d-none');
+            });
+
+            $('#change_file').click(function () {
+                $('#user_cover_image').addClass('d-none');
+                $('#file-upload').removeClass('d-none');
+            });
+        }
+    });
+
+    $('#cancelfile').click(function () {
+        myDropzone.removeAllFiles();
+        $('#user_cover_image').removeClass('d-none');
+        $('#file-upload').addClass('d-none');
+    });
+
+    $('#removefile').click(function () {
+        myDropzone.removeAllFiles();
+    });
+
+    $('#uploadfile').click(function(){
+        myDropzone.processQueue();
+    });
+
+
+    function uploadSceneImage() {
+        let url = "{% url 'guidebook.ajax_upload_scene_image' unique_id=guidebook.unique_id scene_id='scene_id' %}";
+        url = url.replace('scene_id', '' + current_scene_id);
+        myDropzone.options.url = url;
+        $('#uploadPictureModal').modal('show');
+    }
+
+    function showSceneVideoModal() {
+        let url = "{% url 'guidebook.ajax_upload_scene_video' unique_id=guidebook.unique_id scene_id='scene_id' %}";
+        url = url.replace('scene_id', '' + current_scene_id);
+        $('#uploadVideoModal form').attr('action', url);
+        $('#uploadVideoModal').modal('show');
+        $('#uploadVideoModal input[name="video_url"]').val('');
+    }
+
+    function showPOIVideoModal() {
+        let url = "{% url 'guidebook.ajax_upload_poi_video' unique_id=guidebook.unique_id scene_id='scene_id' poi_id='poi_id' %}";
+        url = url.replace('scene_id', '' + current_scene_id);
+        url = url.replace('poi_id', '' + selected_poi_id);
+        $('#uploadVideoModal form').attr('action', url);
+        $('#uploadVideoModal').modal('show');
+        $('#uploadVideoModal input[name="video_url"]').val('');
+    }
+
+    function saveSceneVideoURL() {
+        let url = $('#uploadVideoModal form').attr('action');
+        if ($('#uploadVideoModal form').isValid()) {
+            $.ajax({
+                url: url,
+                type: 'POST',
+                data: $('#uploadVideoModal form').serialize(),
+                dataType: 'json',
+                success: function (data) {
+                    if (data.status == 'failed')
+                        toastr.error(data.message);
+                    else {
+                        toastr.success(data.message);
+                        $('#uploadVideoModal').modal('hide');
+                        updateMediaBox(data);
+                    }
+                }
+            });
+        }
+    }
+
+    function deleteMedia(scene=false) {
+        if (scene) {
+            var url = "{% url 'guidebook.ajax_scene_media_delete' unique_id=guidebook.unique_id scene_id='scene_id' %}";
+            url = url.replace('scene_id', '' + current_scene_id);
+        }
+        else {
+            var url = "{% url 'guidebook.ajax_poi_media_delete' unique_id=guidebook.unique_id scene_id='scene_id' poi_id='poi_id' %}";
+            url = url.replace('scene_id', '' + current_scene_id);
+            url = url.replace('poi_id', '' + selected_poi_id);
+        }
+
+        $.ajax({
+            url: url,
+            type: 'POST',
+            data: {},
+            dataType: 'json',
+            success: function (data) {
+                if (data.status == 'failed')
+                    toastr.error(data.message);
+                else {
+                    toastr.success(data.message);
+                    if (scene) {
+                        $('.scene-added-media').html('');
+                        $('.scene-media-actions .add-actions').removeClass('d-none');
+                        $('.scene-media-actions .delete-action').addClass('d-none');
+                    }
+                    else {
+                        $('#poi_body_' + selected_poi_id + ' .media-box .added-media').html('');
+                        $('#poi_body_' + selected_poi_id + ' .media-box .media-actions .add-actions').removeClass('d-none');
+                        $('#poi_body_' + selected_poi_id + ' .media-box .media-actions .delete-action').addClass('d-none');
+                    }
+                }
+            }
+        });
+    }
+
+    function updateMediaBox(resp, scene=true) {
+        var is_add_action = true;
+        if (resp['poi_image'] != undefined && resp['poi_image'] != '' && resp['poi_image'] != null) {
+            $('#poi_body_' + selected_poi_id + ' .media-box .added-media').html('<img class="w-100" height="200" src="'+resp['poi_image']+'" />');
+            scene = false;
+        }
+        else if (resp['scene_image'] != undefined && resp['scene_image'] != '' && resp['scene_image'] != null) {
+            $('.scene-added-media').html('<img class="w-100" height="200" src="'+resp['scene_image']+'" />');
+        }
+        else if (resp['poi_video'] != undefined && resp['poi_video'] != '' && resp['poi_video'] != null) {
+            $('#poi_body_' + selected_poi_id + ' .media-box .added-media').html('<iframe class="w-100 ml-auto mr-auto" height="200" src="'+resp['poi_video']+'"></iframe>');
+            scene = false;
+        }
+        else if (resp['scene_video'] != undefined && resp['scene_video'] != '' && resp['scene_video'] != null) {
+            $('.scene-added-media').html('<iframe class="w-100 ml-auto mr-auto" height="200" src="'+resp['scene_video']+'"></iframe>');
+        }
+        else {
+            {#$('.scene-media-actions .add-actions').removeClass('d-none');#}
+            {#$('.scene-media-actions .delete-action').addClass('d-none');#}
+            {#$('.scene-added-media').html('');#}
+            return;
+        }
+
+
+        if (scene) {
+            $('.scene-media-actions .add-actions').addClass('d-none');
+            $('.scene-media-actions .delete-action').removeClass('d-none');
+        }
+        else {
+            $('#poi_body_' + selected_poi_id + ' .media-box .media-actions .add-actions').addClass('d-none');
+            $('#poi_body_' + selected_poi_id + ' .media-box .media-actions .delete-action').removeClass('d-none');
+        }
+
+    }
+
+    function uploadPOIImage() {
+        let url = "{% url 'guidebook.ajax_upload_poi_image' unique_id=guidebook.unique_id scene_id='scene_id' poi_id='poi_id' %}";
+        url = url.replace('scene_id', '' + current_scene_id);
+        url = url.replace('poi_id', '' + selected_poi_id);
+        myDropzone.options.url = url;
+        $('#uploadPictureModal').modal('show');
+    }
+
+</script>
+{% endblock %}

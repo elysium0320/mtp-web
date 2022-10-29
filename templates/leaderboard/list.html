@@ -1,0 +1,189 @@
+{% extends 'layouts/base.html' %}
+{% load static %}
+{% block app_leaderboard %}active{% endblock %}
+{% block app_style %}<link rel="stylesheet" href="{% static 'css/leaderboard_style.css' %}">{% endblock %}
+{% block content %}
+<div class="main-body">
+    <div class="left-side d-flex flex-column justify-content-between">
+        <div>
+            <div class="p-3">
+                <div class="pt-3 mb-3">
+                    <h3>
+                        Leaderboard
+                    </h3>
+                </div>
+
+                <p>
+                    {{ pageDescription }}
+                </p>
+            </div>
+            {% if messages %}
+                {% for message in messages %}
+                <div class="alert m-3 alert-{% if message.tags %}{{ message.tags }}{% endif %} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                {% endfor %}
+            {% endif %}
+            <ul class="nav nav-tabs text-center border-bottom-0 " id="myTab" role="tablist">
+                <li class="nav-item" style="width: 30%; margin-left: 5%;">
+                    <a class="nav-link {% if time_type is None or time_type == '' or time_type == 'all_time' %}active{% endif %}" href="{% url 'leaderboard.index' %}?time_type=all_time">All Time</a>
+                </li>
+                <li class="nav-item" style="width: 30%;">
+                    <a class="nav-link {% if time_type == 'yearly' %}active{% endif %}" href="{% url 'leaderboard.index' %}?time_type=yearly">Yearly</a>
+                </li>
+                <li class="nav-item" style="width: 30%; margin-right: 5%;">
+                    <a class="nav-link {% if time_type == 'monthly' %}active{% endif %}" href="{% url 'leaderboard.index' %}?time_type=monthly">Monthly</a>
+                </li>
+
+            </ul>
+            <div class="p-3" style="border-top: 1px solid #dee2e6;">
+                <div class="search-form">
+                    <form method="GET" class="post-form" id="search_form">
+                        <input type="number" class="d-none" name="page" value="{{ page }}">
+                        {% load bootstrap4 %}
+                        {% bootstrap_css %}
+                        {{ form.media }}
+                        {{ form.as_p }}
+                        <div class="form-group text-right mt-3">
+                            <button type="submit" class="save btn btn-primary">Search</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        {% include 'components/copyrite.html' %}
+    </div>
+    <div class="right-board bg-light">
+        <div class="main-list-board mt-4 mb-2 ml-auto mr-auto">
+            <div class="table-header mb-2">
+                <h4>{{ top_title }}</h4>
+            </div>
+            <div class="paginator">
+                {% if items.has_other_pages %}
+                    <ul class="pagination justify-content-center">
+                        {% if items.number != 1 %}
+                            <li class="page-item">
+                                <a class="btn paginator-btn page-link" data-page='1'>&laquo;</a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled">
+                                <a class="btn page-link" href="#" tabindex="-1" aria-disabled="true">&laquo;</a>
+                            </li>
+                        {% endif %}
+                        {% for i in items.paginator.pages %}
+                            {% if items.number == i %}
+                                <li class="active page-item"><a class="btn paginator-btn page-link bg-info" data-page='{{ i }}'>{{ i }}</a></li>
+                            {% else %}
+                                <li><a class="btn paginator-btn page-link" data-page='{{ i }}'>{{ i }}</a></li>
+                            {% endif %}
+                        {% endfor %}
+                        {% if items.number != items.paginator.num_pages %}
+                            <li class="page-item"><a class="btn paginator-btn page-link" data-page='{{ items.paginator.num_pages }}'>&raquo;</a></li>
+                        {% else %}
+                            <li class="disabled page-item"><a class="btn page-link disabled" href="#">&raquo;</a></li>
+                        {% endif %}
+                    </ul>
+                {% endif %}
+            </div>
+            <div class="item-list">
+                {% if items.count > 0 %}
+                    <table class="w-100 table list-table">
+                        <thead>
+                            <tr>
+                                <th>Position</th>
+                                <th>Username</th>
+                                <th>Camera Used</th>
+                                <th>Transport Used</th>
+                                <th>Distance Mapped(km)</th>
+                                <th>Photos captured</th>
+                                <th>Viewpoints</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in items %}
+                                <tr class="border-top" data-username="{{ item.username }}">
+                                    <td>{{ item.rank }}</td>
+                                    <td>{{ item.username }}</td>
+                                    <td>{{ item.used_cameras_str }}</td>
+                                    <td>{{ item.transport_type }}</td>
+                                    <td>{{ item.distance }}</td>
+                                    <td>{{ item.photo_count }}</td>
+                                    <td>{{ item.view_points }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}
+                    <div class="no-results d-flex justify-content-center align-items-center">
+                        <h5 class="text-info">No results match your criteria.</h5>
+                    </div>
+                {% endif %}
+            </div>
+            <div class="paginator">
+                {% if items.has_other_pages %}
+                    <ul class="pagination justify-content-center">
+                        {% if items.number != 1 %}
+                            <li class="page-item">
+                                <a class="btn paginator-btn page-link" data-page='1'>&laquo;</a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled">
+                                <a class="btn page-link" href="#" tabindex="-1" aria-disabled="true">&laquo;</a>
+                            </li>
+                        {% endif %}
+                        {% for i in items.paginator.pages %}
+                            {% if items.number == i %}
+                                <li class="active page-item"><a class="btn paginator-btn page-link bg-info" data-page='{{ i }}'>{{ i }}</a></li>
+                            {% else %}
+                                <li><a class="btn paginator-btn page-link" data-page='{{ i }}'>{{ i }}</a></li>
+                            {% endif %}
+                        {% endfor %}
+                        {% if items.number != items.paginator.num_pages %}
+                            <li class="page-item"><a class="btn paginator-btn page-link" data-page='{{ items.paginator.num_pages }}'>&raquo;</a></li>
+                        {% else %}
+                            <li class="disabled page-item"><a class="btn page-link disabled" href="#">&raquo;</a></li>
+                        {% endif %}
+                    </ul>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $('table tr').click(function () {
+        var username = $(this).attr('data-username');
+        var filter_time = '';
+        var time_type = '';
+        {% if not filter_time is None %}
+            filter_time = "{{ filter_time }}"
+        {% endif %}
+        {% if not time_type is None %}
+            time_type = "{{ time_type }}"
+        {% endif %}
+        var order_type = '';
+        {% if not request.GET.filter_type is None and request.GET.filter_type != '' %}
+        order_type = "{{ request.GET.filter_type }}"
+        {% endif %}
+        if (order_type != '2')
+            var url = "{% url 'sequence.sequence_list' %}?username=" + username + "&time_type=" + time_type + "&time=" + filter_time;
+        else if (order_type == '2')
+            var url = "{% url 'sequence.image_leaderboard' %}?username=" + username + "&filter_type=view_point&time_type=" + time_type + "&time=" + filter_time;
+        location.assign(url);
+    });
+
+    $('.paginator-btn').click(function() {
+        let pageNum = $(this).data('page');
+        let url = setParamInURL('page', pageNum);
+        location.assign(url);
+    });
+
+</script>
+{% endblock %}

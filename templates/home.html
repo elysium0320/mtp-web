@@ -1,0 +1,224 @@
+{% extends 'layouts/base.html' %}
+{% load static %}
+{% block app_home %}active{% endblock %}
+{% block app_style %}<!--suppress JSUnresolvedFunction -->
+    <link rel="stylesheet" href="{% static 'css/sequence_style.css' %}">{% endblock %}
+{% block content %}
+
+<div class="main-body">
+    <div class="right-board list bg-light w-100 ml-0">
+        <div id="map">
+        </div>
+    </div>
+
+    <div class="detail-modal modal fade" style="padding-top: 140px !important;" id="sequenceDetailModal">
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    mapboxgl.accessToken = mapboxToken;
+
+    Swal.fire({
+        title: 'Welcome to Map the Paths!',
+        html: "Access off-road street-level imagery and map data from all over the world. Fill in the gaps by requesting new coverage or capturing your own.",
+        showCancelButton: false,
+        confirmButtonText: 'OK'
+    })
+
+
+    const map = new mapboxgl.Map({
+        container: 'map', // container id
+        style: 'mapbox://styles/mapbox/streets-v11', //hosted style id
+        center: [-74.5, 40], // starting position
+        zoom: 1 // starting zoom
+    });
+
+    map.addControl(
+        new MapboxGeocoder({
+            accessToken: mapboxgl.accessToken,
+            localGeocoder: coordinatesGeocoder,
+            zoom: 1,
+            placeholder: '',
+            mapboxgl: mapboxgl
+        }), 'top-left'
+    );
+
+    // Create a popup, but don't add it to the map yet.
+    const popup = new mapboxgl.Popup({
+        closeButton: false,
+        closeOnClick: false
+    });
+
+    map.on('load', function() {
+        // drawMapillaryIamgeByUserKey('');
+        drawMapByUserKey('');
+        map.on('mouseenter', 'original_mapillary-images', function(e) {
+          // Change the cursor style as a UI indicator.
+          map.getCanvas().style.cursor = 'pointer';
+
+            const coordinates = e.features[0].geometry.coordinates.slice();
+            const key = e.features[0].properties.key;
+            const url = "https://images.mapillary.com/" + key + "/thumb-320.jpg";
+
+            // Ensure that if the map is zoomed out such that multiple
+          // copies of the feature are visible, the popup appears
+          // over the copy being pointed to.
+          while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
+            coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
+          }
+
+          // Populate the popup and set its coordinates
+          // based on the feature found.
+          popup.setLngLat(coordinates)
+          .setHTML('<img src="' + url + '" width="160"  alt=""/>')
+          .addTo(map);
+        });
+
+        map.on('click', 'original_mapillary-images', function (e) {
+            getSequenceDetailByImageKey(e.features[0].properties.key);
+        });
+
+        // Change it back to a pointer when it leaves.
+        map.on('mouseleave', 'original_mapillary-images', function () {
+            map.getCanvas().style.cursor = '';
+            popup.remove();
+        });
+    });
+
+    function drawMapillaryIamgeByUserKey(userkey) {
+        var filter = ['all',
+            ['==', 'userkey', userkey]
+        ]
+        if (typeof userkey == 'undefined' || userkey == '')
+            filter = ['all']
+
+        console.log('test')
+
+        if (map.getLayer('original_mapillary')) map.removeLayer('original_mapillary');
+        if (map.getLayer('original_mapillary-images')) map.removeLayer('original_mapillary-images');
+        if (map.getSource('original_mapillary-images')) map.removeSource('original_mapillary-images');
+        if (map.getSource('original_mapillary-sequences')) map.removeSource('original_mapillary-sequences');
+
+        map.addSource('original_mapillary-sequences', {
+            "type": "vector",
+            "tiles": ["https://tiles3.mapillary.com/v0.1/{z}/{x}/{y}.mvt"],
+        });
+
+        map.addLayer({
+            "id": "original_mapillary",
+            "type": "line",
+            "source": 'original_mapillary-sequences',
+            "source-layer": 'mapillary-sequences',
+            'filter': filter,
+            "layout": {
+                "line-cap": "round",
+                "line-join": "round"
+            },
+            "paint": {
+                "line-opacity": 0.6,
+                "line-color": "grey",
+                "line-width": 2
+            }
+        }, "waterway-label");
+
+        map.addSource('original_mapillary-images', {
+            "type": "vector",
+            "tiles": ["https://tiles3.mapillary.com/v0.1/{z}/{x}/{y}.mvt"],
+            "minzoom": 6,
+            "maxzoom": 14
+        });
+
+        map.addLayer({
+            "id": "original_mapillary-images",
+            "type": "circle",
+            "source": 'original_mapillary-images',
+            "source-layer": 'mapillary-images',
+            'filter': filter,
+            "paint": {
+                "circle-color": "grey",
+                "circle-radius": 6
+            }
+        }, "waterway-label");
+    }
+
+    function drawMapByUserKey(userkey) {
+        console.log('userkey', userkey);
+        let filter = ['all',
+            ['==', 'userkey', userkey]
+        ];
+        if (typeof userkey == 'undefined' || userkey === '')
+            filter = ['all']
+
+        if (map.getLayer('mtp-sequences')) map.removeLayer('mtp-sequences');
+        if (map.getLayer('mtp-images')) map.removeLayer('mtp-images');
+        if (map.getSource('mtp-images')) map.removeSource('mtp-images');
+        if (map.getSource('mtp-sequences')) map.removeSource('mtp-sequences');
+
+        map.addSource('mtp-sequences', {
+            "type": "vector",
+            "tiles": ["{{ BASE_URL }}{% url 'api.sequence.mvt' version='v1' %}?tile={z}/{x}/{y}&limit=2000"],
+        });
+
+        map.addLayer({
+            "id": "mtp-sequences",
+            "type": "line",
+            "source": 'mtp-sequences',
+            "source-layer": 'mtp-sequences',
+            'filter': filter,
+            "layout": {
+                "line-cap": "round",
+                "line-join": "round"
+            },
+            "paint": {
+                "line-opacity": 0.6,
+                "line-color": "#7880bd",
+                "line-width": 2
+            }
+        }, "waterway-label");
+
+        map.addSource('mtp-images', {
+            "type": "vector",
+            "tiles": ["{{ BASE_URL }}{% url 'api.sequence.image_mvt' version='v1' %}?tile={z}/{x}/{y}&limit=2000"],
+        });
+
+        map.addLayer({
+            "id": "mtp-images",
+            "type": "circle",
+            "source": 'mtp-images',
+            "source-layer": 'mtp-images',
+            'filter': filter,
+            "paint": {
+                "circle-color": "#7880bd",
+                "circle-radius": 6
+            }
+        }, "waterway-label");
+    }
+
+    function getSequenceDetailByImageKey(image_key) {
+        let url = "{% url 'sequence.ajax_get_detail_by_image_key' image_key='init_image_key' %}";
+        url = url.replace('init_image_key', image_key);
+        $.ajax({
+            url: url,
+            type: 'GET',
+            data: {},
+            dataType: 'json',
+            success: function (data) {
+                if (!data.sequence) {
+                    toastr.error(data.message);
+                }
+                else {
+                    const $detailModal = $('#sequenceDetailModal');
+                    $detailModal.html(data['sequence_html_detail'])
+                    $detailModal.modal({
+                        'backdrop': false,
+                        'show': true,
+                    });
+                }
+            }
+        });
+    }
+</script>
+{% endblock %}

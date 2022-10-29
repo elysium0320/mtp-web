@@ -1,0 +1,737 @@
+{% extends 'layouts/base.html' %}
+{% load static %}
+{% block app_sequence %}active{% endblock %}
+{% block app_style %}<!--suppress JSUnresolvedFunction -->
+    <link rel="stylesheet" href="{% static 'css/sequence_style.css' %}">{% endblock %}
+{% block content %}
+
+<div class="main-body">
+    <div class="left-side d-flex flex-column justify-content-between">
+        <div>
+
+            <div class="p-3">
+                <div class="pt-3 mb-3">
+                    <h3>
+                        Sequences
+                    </h3>
+                </div>
+
+                <p>
+                    {{ pageDescription }}
+                </p>
+            </div>
+            {% if messages %}
+                {% for message in messages %}
+                <div class="alert m-3 alert-{% if message.tags %}{{ message.tags }}{% endif %} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                {% endfor %}
+            {% endif %}
+
+            <div class="w-100 mb-3 pr-3 pl-3">
+                <span>If you've already uploaded imagery to Mapillary</span>
+                <a class="btn btn-outline-primary mt-2" href="{% url 'sequence.import_sequence' %}">
+                    Import from Mapillary
+                </a>
+            </div>
+
+            <div class="w-100 mb-3 pr-3 pl-3">
+                <span>Or upload your images now</span>
+                <br />
+                <a class="btn btn-outline-primary mt-2" href="{% url 'app_download' %}">
+                    Upload new imagery
+                </a>
+            </div>
+
+            <div class="ml-3 mb-2 mr-3">
+                <h4>Filter Sequence</h4>
+            </div>
+
+            {% if user.is_authenticated %}
+                <ul class="nav nav-tabs text-center border-bottom-0 " id="myTab" role="tablist">
+                    <li class="nav-item" style="width: 30%;">
+                        <a class="nav-link {% if pageName == 'Sequences' %}active{% endif %}" href="{% url 'sequence.index' %}">All</a>
+                    </li>
+                    <li class="nav-item" style="width: 50%">
+                        <a class="nav-link {% if pageName == 'My Sequences' %}active{% endif %}" href="{% url 'sequence.my_sequence_list' %}">My Sequences</a>
+                    </li>
+                </ul>
+            {% endif %}
+            <div class="p-3" style="border-top: 1px solid #dee2e6;">
+                <div class="search-form">
+                    <form method="GET" class="post-form" id="search_form">
+                        <label>
+                            <input type="number" class="d-none" name="page" value="{{ page }}">
+                        </label>
+                        {% load bootstrap4 %}
+                        {% bootstrap_css %}
+                        {{ form.media }}
+                        {{ form.as_p }}
+                        <div class="form-group text-right mt-3">
+                            <button type="submit" class="save btn btn-primary">Search</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% include 'components/copyrite.html' %}
+    </div>
+    <div class="right-board list bg-light">
+        <div class="switch-list-viewer d-flex ">
+            <div class="mr-2">
+                <select class="form-control" id="order_type" {{ order_type }} >
+                    <option value="latest_date" {% if order_type == 'latest_date' %}selected{% endif %}>Latest Date</option>
+                    <option value="most_likes" {% if order_type == 'most_likes' %}selected{% endif %}>Most Likes</option>
+                </select>
+            </div>
+            <label for="switch-list-viewer"></label><input class="" {% if request.GET.view_type is not None and request.GET.view_type == 'map-view' %}checked{% endif %} type="checkbox" id="switch-list-viewer" data-toggle="toggle" data-on="Map View" data-off="List View" data-onstyle="success" data-offstyle="primary">
+        </div>
+        <div id="list-view" class="{% if request.GET.view_type is not None and request.GET.view_type == 'map-view' %}d-none{% endif %} mt-4 mb-2 ml-auto mr-auto">
+            <div class="paginator">
+                {% if sequences.has_other_pages %}
+                    <ul class="pagination justify-content-center">
+                        {% if sequences.number != 1 %}
+                            <li class="page-item">
+                                <a class="btn paginator-btn page-link" data-page='1'>&laquo;</a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled">
+                                <a class="btn page-link" href="#" tabindex="-1" aria-disabled="true">&laquo;</a>
+                            </li>
+                        {% endif %}
+                        {% for i in sequences.paginator.pages %}
+                            {% if sequences.number == i %}
+                                <li class="active page-item"><a class="btn paginator-btn page-link bg-info" data-page='{{ i }}'>{{ i }}</a></li>
+                            {% else %}
+                                <li><a class="btn paginator-btn page-link" data-page='{{ i }}'>{{ i }}</a></li>
+                            {% endif %}
+                        {% endfor %}
+                        {% if sequences.number != sequences.paginator.num_pages %}
+                            <li class="page-item"><a class="btn paginator-btn page-link" data-page='{{ sequences.paginator.num_pages }}'>&raquo;</a></li>
+                        {% else %}
+                            <li class="disabled page-item"><a class="btn page-link disabled" href="#">&raquo;</a></li>
+                        {% endif %}
+                    </ul>
+                {% endif %}
+            </div>
+            <div class="item-list">
+                {% if sequences.count > 0 %}
+                    {% for sequence in sequences %}
+                        <div class="card sequence pr-3 pl-3 pt-2 pb-2 m-3 m-3" id="sequence_{{ sequence.unique_id }}" data-sequence-id="{{ sequence.unique_id }}">
+                            <div class="row align-items-center">
+                                <div class="col-md-5 col-lg-4">
+                                    <div class="row align-items-center pl-1 pr-1">
+                                        <div class="col-md-6 pl-1 pr-1">
+                                            <div class="min-map-box" id="map-{{ sequence.unique_id }}">
+                                            </div>
+                                        </div>
+
+                                        <div class=" col-md-6 pl-1 pr-1">
+                                            <div class="cover-image-box">
+                                                <div class="">
+                                                    {% if sequence.get_cover_image is None %}
+                                                        <img class="w-100" src="{% static 'images/global/empty-1.png' %}" alt="Empty Image">
+                                                    {% else %}
+                                                        <img class="w-100" src="https://images.mapillary.com/{{ sequence.get_cover_image }}/thumb-320.jpg" alt="Sequence Cover Image (first image)">
+                                                    {% endif %}
+                                                </div>
+                                                <div class="user-on-mapillary" >
+                                                    image by {{ sequence.username }} on mapillary
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="detail-box col-md-7 col-lg-8">
+                                    <div class="row" style="width: calc(100% + 30px)">
+                                        <div class="col-md-6 item-detail-box p-2">
+                                            <div class="item-main w-100 float-left">
+                                                <div class="item-title text-info d-flex flex-row justify-content-between">
+                                                    <a href="{% url 'sequence.sequence_detail' unique_id=sequence.unique_id %}">
+                                                        <h6>{{ sequence.name }}</h6>
+                                                    </a>
+                                                </div>
+
+                                                <div class="item-description">
+                                                    <p class="mb-1">
+                                                        {{ sequence.get_short_description }}
+                                                    </p>
+                                                </div>
+
+                                                <div class="w-100 d-flex flex-row align-items-end justify-content-between">
+                                                    <p class="mb-1 item-transport-type text-center">
+                                                        <i class="transport-type-icon fas fa-{{ sequence.transport_type.parent.icon.font_awesome }}"></i>
+                                                        <br>
+                                                        {{ sequence.transport_type.parent }}
+                                                    </p>
+                                                    <p class="mb-1 item-transport-type text-center">
+                                                        <i class="transport-type-icon fas fa-{{ sequence.transport_type.icon.font_awesome }}"></i>
+                                                        <br>
+                                                        {{ sequence.transport_type.name }}
+                                                    </p>
+                                                    <p class="mb-1 item-image-count text-center">
+                                                        <i class="fas fa-image"></i>
+                                                        <br>
+                                                        {{ sequence.get_image_count }} Photos
+                                                    </p>
+                                                    <p class="mb-1 item-distance text-center">
+                                                        <i class="fas fa-ruler-horizontal "></i>
+                                                        <br>
+                                                        {{ sequence.get_distance }} Km
+                                                    </p>
+                                                    <a {% if sequence.tour_count > 0 %}href="{% url 'tour.tour_list' %}?sequence_unique_id={{ sequence.unique_id }}" {% endif %}>
+                                                        <p class="mb-1 item-tour-count text-center">
+                                                            <i class="fas fa-clipboard-list"></i>
+                                                            <br>
+                                                            {{ sequence.tour_count }} tours
+                                                        </p>
+                                                    </a>
+                                                    {% if sequence.pano %}
+                                                    <p class="mb-1 item-pano text-center">
+                                                        <i class="fas fa-vr-cardboard"></i>
+                                                        <br>
+                                                        Pano
+                                                    </p>
+                                                    {% endif %}
+                                                </div>
+
+                                                <div class="item-tag" style="min-height: 24px;">
+                                                    {% for tag_name in sequence.get_tags %}
+                                                        <span class="tag pl-1 pr-1 mt-1 mb-1 mr-1">
+                                                            {{ tag_name }}
+                                                        </span>
+                                                    {% endfor %}
+                                                </div>
+
+                                                <div class="item-user d-flex justify-content-between">
+                                                    <a href="{% url 'account.profile' username=sequence.user.username %}">
+                                                        <span class="user">{{ sequence.user.username }}</span>
+                                                    </a>
+                                                    {% if sequence.like_count > 0 %}
+                                                        <div><i class="fa-thumbs-up fas"></i><span class="ml-2" style="font-size: 15px">{{ sequence.like_count }}</span></div>
+                                                    {% else %}
+                                                         <div><i class="fa-thumbs-up far"></i><span class="ml-2" style="font-size: 15px">0</span></div>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+
+                                        </div>
+                                        <div class="col-md-3 pr-0">
+                                            <canvas id="chart_{{ sequence.unique_id }}" data-sequence-id="{{ sequence.unique_id }}" class="ele-chart" width="250" height="190"></canvas>
+                                        </div>
+                                        <div class="col-md-3 p-0 text-center d-flex flex-column align-items-center justify-content-center" style="font-size: 13px;">
+                                            <div class="d-flex flex-row justify-content-center  align-items-center text-right">
+                                                <a target="_blank" class="mr-2" href="https://www.openstreetmap.org/edit?editor=id#map=18/{{ sequence.get_first_point_lat }}/{{ sequence.get_first_point_lng }}&photo_overlay=mapillary">
+                                                    <img style="width: 32px" src="{% static "images/icon/90606167-57892980-e1f7-11ea-96e7-ed01ef35b2b7.png" %}"  alt=""/>
+                                                </a>
+                                                {% if sequence.google_street_view is not None and sequence.google_street_view != '' %}
+{#                                                    <a class="mr-2" target="_blank" href="https://www.google.co.uk/maps/@{{ sequence.get_first_point_lat }},{{ sequence.get_first_point_lng }},14z">#}
+{#                                                        <img src="https://www.google.com/images/branding/product/ico/maps15_bnuw3a_32dp.ico"  alt=""/>#}
+{#                                                    </a>#}
+                                                    <a class="mr-2" target="_blank" href="{{ sequence.google_street_view }}">
+                                                        <img src="https://www.google.com/images/branding/product/ico/maps15_bnuw3a_32dp.ico"  alt=""/>
+                                                    </a>
+                                                {% endif %}
+                                                {% if not sequence.strava is None and sequence.strava != ''  %}
+                                                    <a class="mr-2" target="_blank" href="https://www.strava.com/activities/{{ sequence.strava }}">
+                                                        <img style="width: 35px" src="https://a4k2d2q5.rocketcdn.me/wp-content/uploads/2018/02/Strava-Running-and-Cycling-GPS.png" alt="">
+                                                    </a>
+                                                {% endif %}
+                                                <a target="_blank" class="" href="https://www.mapillary.com/app/?pKey={{ sequence.get_first_image_key }}&focus=photo">
+                                                    <img style="width: 32px" src="https://encrypted-tbn0.gstatic.com/images?q=tbn%3AANd9GcQiTHrSFBxGdPFbRSCEXLo3IB1IzMS50F_V0Q&usqp=CAU" alt="">
+                                                </a>
+                                            </div>
+
+                                            <p class="mt-3">Captured at: {{ sequence.captured_at }}</p>
+{#                                            <p>Uploaded at: {{ sequence.created_at }}</p>#}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="no-results d-flex justify-content-center align-items-center">
+                        <h5 class="text-info">No results match your criteria.</h5>
+                    </div>
+                {% endif %}
+            </div>
+            <div class="paginator">
+                {% if sequences.has_other_pages %}
+                    <ul class="pagination justify-content-center">
+                        {% if sequences.number != 1 %}
+                            <li class="page-item">
+                                <a class="btn paginator-btn page-link" data-page='1'>&laquo;</a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled">
+                                <a class="btn page-link" href="#" tabindex="-1" aria-disabled="true">&laquo;</a>
+                            </li>
+                        {% endif %}
+                        {% for i in sequences.paginator.pages %}
+                            {% if sequences.number == i %}
+                                <li class="active page-item"><a class="btn paginator-btn page-link bg-info" data-page='{{ i }}'>{{ i }}</a></li>
+                            {% else %}
+                                <li><a class="btn paginator-btn page-link" data-page='{{ i }}'>{{ i }}</a></li>
+                            {% endif %}
+                        {% endfor %}
+                        {% if sequences.number != sequences.paginator.num_pages %}
+                            <li class="page-item"><a class="btn paginator-btn page-link" data-page='{{ sequences.paginator.num_pages }}'>&raquo;</a></li>
+                        {% else %}
+                            <li class="disabled page-item"><a class="btn page-link disabled" href="#">&raquo;</a></li>
+                        {% endif %}
+                    </ul>
+                {% endif %}
+            </div>
+        </div>
+        <div class="{% if request.GET.view_type is None or request.GET.view_type != 'map-view' %}d-none{% endif %}" id="map">
+
+        </div>
+    </div>
+
+    <div class="detail-modal modal fade" style="padding-top: 140px !important;" id="sequenceDetailModal">
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+    <script src="{% static 'js/chart.min.js' %}"></script>
+<script>
+    $('.paginator-btn').click(function() {
+        let pageNum = $(this).data('page');
+        let url = setParamInURL('page', pageNum);
+        location.assign(url);
+    });
+
+    mapboxgl.accessToken = mapboxToken;
+    const positions = [];
+    {% for sequence in sequences %}
+        positions.push({{ sequence.geometry_coordinates_ary }});
+    {% endfor %}
+
+    const map_ary = [];
+    const chart_ary = [];
+    let i;
+
+    function draw_map(data) {
+        let first_point;
+        let map;
+        const obj = $('.min-map-box').eq(i);
+        const obj_id = obj.attr('id');
+        const sceneData = [];
+        let item = {};
+        const scene_positions = [];
+        for (let j = 0; j < data.length; j++)
+        {
+            const lat = data[j][1];
+            const lng = data[j][0];
+            scene_positions.push([lng, lat]);
+            item = {
+                "type": "Feature",
+                "properties": {},
+                "geometry": {
+                    "coordinates": [lng, lat],
+                    "type": "Point"
+                }
+            };
+            sceneData.push(item);
+        }
+
+        if (scene_positions.length > 0)
+            {
+                first_point = scene_positions[0];
+            }
+        else
+            {
+                first_point = null;
+            }
+
+        console.log('positions', sceneData)
+        if (first_point != null) {
+            map = new mapboxgl.Map({
+                container: obj_id, // container id
+                style: 'mapbox://styles/mapbox/streets-v11', //hosted style id
+                center: first_point, // starting position
+                zoom: 12, // starting zoom
+            });
+        }
+        else {
+            map = new mapboxgl.Map({
+                container: obj_id, // container id
+                style: 'mapbox://styles/mapbox/streets-v11', //hosted style id
+                center: [-87.622088, 41.878781], // starting position
+                zoom: 12, // starting zoom
+            });
+        }
+        map.on('load', function() {
+            map.addSource('points', {
+                'type': 'geojson',
+                'data': {
+                    'type': 'FeatureCollection',
+                    'features': sceneData
+                }
+            });
+            map.addLayer({
+                'id': 'mapillary-images',
+                'type': 'circle',
+                'source': 'points',
+                "paint": {
+                    "circle-color": "#039825",
+                    "circle-radius": 6
+                }
+            });
+        });
+        map_ary.push(map)
+        map.resize();
+    }
+
+    const centerPointerData = [];
+    const map = new mapboxgl.Map({
+        container: 'map', // container id
+        style: 'mapbox://styles/mapbox/streets-v11', //hosted style id
+        center: [-74.5, 40], // starting position
+        zoom: 1 // starting zoom
+    });
+
+    map.addControl(
+        new MapboxGeocoder({
+            accessToken: mapboxgl.accessToken,
+            localGeocoder: coordinatesGeocoder,
+            zoom: 1,
+            placeholder: '',
+            mapboxgl: mapboxgl
+        }), 'top-left'
+    );
+
+    for (i = 0; i < positions.length; i++)
+    {
+        draw_map(positions[i]);
+        drawMapView(i, positions[i])
+    }
+
+    function drawMapView(l, data) {
+        if (data.length === 0)
+            return false;
+        const centerItem = {
+            "type": "Feature",
+            "properties": {"sequence_id": $('.sequence').eq(l).data('sequence-id')},
+            "geometry": {
+                "coordinates": [data[0][0], data[0][1]],
+                "type": "Point"
+            }
+        };
+        centerPointerData.push(centerItem);
+    }
+
+    // Create a popup, but don't add it to the map yet.
+    const popup = new mapboxgl.Popup({
+        closeButton: false,
+        closeOnClick: false
+    });
+
+    map.on('load', function() {
+        // {% if is_filtered == False %}
+        //     drawMapillaryIamgeByUserKey('');
+        // {% endif %}
+        drawMapByUserKey('');
+
+        map.on('mouseenter', 'original_mapillary-images', function(e) {
+          // Change the cursor style as a UI indicator.
+          map.getCanvas().style.cursor = 'pointer';
+
+            const coordinates = e.features[0].geometry.coordinates.slice();
+            const key = e.features[0].properties.key;
+            const url = "https://images.mapillary.com/" + key + "/thumb-320.jpg";
+
+            // Ensure that if the map is zoomed out such that multiple
+          // copies of the feature are visible, the popup appears
+          // over the copy being pointed to.
+          while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
+            coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
+          }
+
+          // Populate the popup and set its coordinates
+          // based on the feature found.
+          popup.setLngLat(coordinates)
+          .setHTML('<img src="' + url + '" width="160"  alt=""/>')
+          .addTo(map);
+        });
+
+        map.on('click', 'original_mapillary-images', function (e) {
+            getSequenceDetailByImageKey(e.features[0].properties.key);
+        });
+
+        // Change it back to a pointer when it leaves.
+        map.on('mouseleave', 'original_mapillary-images', function () {
+            map.getCanvas().style.cursor = '';
+            popup.remove();
+        });
+    });
+
+    function drawMapillaryIamgeByUserKey(userkey) {
+        var filter = ['all',
+            ['==', 'userkey', userkey]
+        ]
+        if (typeof userkey == 'undefined' || userkey == '')
+            filter = ['all']
+
+        console.log('test')
+
+        if (map.getLayer('original_mapillary')) map.removeLayer('original_mapillary');
+        if (map.getLayer('original_mapillary-images')) map.removeLayer('original_mapillary-images');
+        if (map.getSource('original_mapillary-images')) map.removeSource('original_mapillary-images');
+        if (map.getSource('original_mapillary-sequences')) map.removeSource('original_mapillary-sequences');
+
+        map.addSource('original_mapillary-sequences', {
+            "type": "vector",
+            "tiles": ["https://tiles3.mapillary.com/v0.1/{z}/{x}/{y}.mvt"],
+        });
+
+        map.addLayer({
+            "id": "original_mapillary",
+            "type": "line",
+            "source": 'original_mapillary-sequences',
+            "source-layer": 'mapillary-sequences',
+            'filter': filter,
+            "layout": {
+                "line-cap": "round",
+                "line-join": "round"
+            },
+            "paint": {
+                "line-opacity": 0.6,
+                "line-color": "grey",
+                "line-width": 2
+            }
+        }, "waterway-label");
+
+        map.addSource('original_mapillary-images', {
+            "type": "vector",
+            "tiles": ["https://tiles3.mapillary.com/v0.1/{z}/{x}/{y}.mvt"],
+            "minzoom": 6,
+            "maxzoom": 14
+        });
+
+        map.addLayer({
+            "id": "original_mapillary-images",
+            "type": "circle",
+            "source": 'original_mapillary-images',
+            "source-layer": 'mapillary-images',
+            'filter': filter,
+            "paint": {
+                "circle-color": "grey",
+                "circle-radius": 6
+            }
+        }, "waterway-label");
+    }
+
+    function getParamsFromURL() {
+        const queryString = window.location.search;
+        const urlParams = new URLSearchParams(queryString);
+        let param_str = '';
+        if (urlParams.has('username') && urlParams.get('username') != '')
+            param_str += '&username=' + urlParams.get('username');
+        if (urlParams.has('name') && urlParams.get('name') != '')
+            param_str += '&sequence_name=' + urlParams.get('name');
+        return param_str
+    }
+
+    function drawMapByUserKey(userkey) {
+        console.log('userkey', userkey);
+        let filter = ['all',
+            ['==', 'userkey', userkey]
+        ];
+        if (typeof userkey == 'undefined' || userkey === '')
+            filter = ['all']
+
+        if (map.getLayer('mtp-sequences')) map.removeLayer('mtp-sequences');
+        if (map.getLayer('mtp-images')) map.removeLayer('mtp-images');
+        if (map.getSource('mtp-images')) map.removeSource('mtp-images');
+        if (map.getSource('mtp-sequences')) map.removeSource('mtp-sequences');
+        {#if (map.getLayer('mtp-images-big')) map.removeLayer('mtp-images-big');#}
+        {#if (map.getSource('mtp-images-big')) map.removeSource('mtp-images-big');#}
+        let params = getParamsFromURL()
+        map.addSource('mtp-sequences', {
+            "type": "vector",
+            "tiles": ["{{ BASE_URL }}{% url 'api.sequence.mvt' version='v1' %}?tile={z}/{x}/{y}&page_name=sequence_list&limit=2500"],
+        });
+
+        map.addLayer({
+            "id": "mtp-sequences",
+            "type": "line",
+            "source": 'mtp-sequences',
+            "source-layer": 'mtp-sequences',
+            'filter': filter,
+            "layout": {
+                "line-cap": "round",
+                "line-join": "round"
+            },
+            "paint": {
+                "line-opacity": 0.6,
+                "line-color": "#7880bd",
+                "line-width": 2
+            }
+        }, "waterway-label");
+
+
+        map.addSource('mtp-images', {
+            "type": "vector",
+            "tiles": ["{{ BASE_URL }}{% url 'api.sequence.image_mvt' version='v1' %}?tile={z}/{x}/{y}&page_name=sequence_list&limit=5000"],
+            {#"minzoom": 6,#}
+            {#"maxzoom": 14#}
+        });
+
+        map.addLayer({
+            "id": "mtp-images",
+            "type": "circle",
+            "source": 'mtp-images',
+            "source-layer": 'mtp-images',
+            'filter': filter,
+            "paint": {
+                "circle-color": "#7880bd",
+                "circle-radius": 6
+            }
+        }, "waterway-label");
+
+    }
+
+    function getSequenceDetailByUniqueID(id) {
+        let url = "{% url 'sequence.ajax_get_detail' unique_id='unique_id' %}";
+        url = url.replace('unique_id', id);
+        $.ajax({
+            url: url,
+            type: 'GET',
+            data: {},
+            dataType: 'json',
+            success: function (data) {
+                if (!data.sequence) {
+                    toastr.error(data.message);
+                }
+                else {
+                    const $detailModal = $('#sequenceDetailModal');
+                    $detailModal.html(data['sequence_html_detail'])
+                    $detailModal.modal({
+                        'backdrop': false,
+                        'show': true,
+                    });
+                }
+            }
+        });
+    }
+
+    function getSequenceDetailByImageKey(image_key) {
+        let url = "{% url 'sequence.ajax_get_detail_by_image_key' image_key='init_image_key' %}";
+        url = url.replace('init_image_key', image_key);
+        $.ajax({
+            url: url,
+            type: 'GET',
+            data: {},
+            dataType: 'json',
+            success: function (data) {
+                if (!data.sequence) {
+                    toastr.error(data.message);
+                }
+                else {
+                    const $detailModal = $('#sequenceDetailModal');
+                    $detailModal.html(data['sequence_html_detail'])
+                    $detailModal.modal({
+                        'backdrop': false,
+                        'show': true,
+                    });
+                }
+            }
+        });
+    }
+
+    function gotoDetail(id) {
+        let url = "{% url 'sequence.sequence_detail' unique_id='unique_id' %}";
+        url = url.replace('unique_id', id);
+        location.assign(url);
+    }
+
+    $('#switch-list-viewer').change(function () {
+        let url;
+        if ($(this).prop('checked')) {
+            $('#list-view').addClass('d-none');
+            $('#map').removeClass('d-none');
+            url = setParamInURL('view_type', 'map-view');
+        }
+        else {
+            $('#list-view').removeClass('d-none');
+            $('#map').addClass('d-none');
+            url = setParamInURL('view_type', 'list-view');
+        }
+        history.pushState({
+            id: 'Image Leaderboard List'
+        }, "{{ pageTitle }}", url);
+        map.resize();
+    })
+
+    function drawChart(sequence_id) {
+        let url = "{% url 'sequence.ajax_get_image_ele' unique_id='unique_id' %}";
+        url = url.replace('unique_id', sequence_id)
+        $.ajax({
+            url: url,
+            type: 'GET',
+            data: {},
+            dataType: 'json',
+            success: function (data) {
+                if (data.status === 'failed')
+                {
+                    toastr.error(data.message)
+                }
+                else {
+                    const num_ary = [];
+                    for (let i=0; i<data.eles.length; i++) {
+                        num_ary.push(i+1)
+                    }
+                    const myLineChart = new Chart(document.getElementById("chart_" + sequence_id), {
+                        type: 'line',
+                        data: {
+                            labels: num_ary,
+                            datasets: [{
+                                data: data['eles'],
+                                borderWidth: 1,
+                                borderColor: "#3e95cd",
+                                fill: false
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                yAxes: [{
+                                    scaleLabel: {
+                                        display: true,
+                                        labelString: 'mtrs abv sea lvl'
+                                    },
+                                    //ticks: {
+                                    //    beginAtZero:true
+                                    //}
+                                }],
+                                xAxes: [{
+                                    scaleLabel: {
+                                        display: true,
+                                        labelString: 'photo num'
+                                    }
+                                }]
+                            },
+                            'legend': {'display': false}
+                        }
+                    });
+                }
+            }
+        });
+    }
+
+    $('.ele-chart').each(function () {
+        const sequence_id = $(this).attr('data-sequence-id');
+        drawChart(sequence_id)
+    })
+
+</script>
+{% endblock %}

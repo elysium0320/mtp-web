@@ -1,0 +1,758 @@
+{% extends 'layouts/base.html' %}
+{% load static %}
+{% block app_tour %}active{% endblock %}
+{% block app_style %}<link rel="stylesheet" href="{% static 'css/sequence_style.css' %}">{% endblock %}
+{% block content %}
+
+<div class="main-body">
+    <div class="left-side d-flex flex-column justify-content-between">
+        <div>
+            <div class="page-header">
+                <div class="pt-3 pl-3 mt-3 pr-3 ">
+                    <h4>
+                        {{ pageName }}
+                    </h4>
+                </div>
+            </div>
+            <div class="card m-3 p-2">
+                <div class="tour-detail ">
+                    <div class="tour-name text-center text-info mt-1">
+                        <h3>
+                            {{ tour.name }}
+                        </h3>
+                    </div>
+
+                    <div class="tour-description">
+                        <p class="mb-1">
+                            {{ tour.description }}
+                        </p>
+                    </div>
+                    <div class="tour-tag">
+                        {% for tag_name in tour.get_tags %}
+                            <span class="tag pl-1 pr-1 mt-1 mb-1 mr-1">
+                                {{ tag_name }}
+                            </span>
+                        {% endfor %}
+                    </div>
+
+                    <div class="tag-created-at text-secondary mt-2 d-flex justify-content-between">
+                        <a href="{% url 'account.profile' username=tour.user.username %}">
+                            <span class="" style="color: brown;">
+                                {{ tour.user }}
+                            </span>
+                        </a>
+                    </div>
+
+                    <div class="action w-100 text-right mt-2">
+                        <button type="button" class="btn btn-sm btn-primary" id="edit_button">Edit</button>
+                    </div>
+                </div>
+
+                <div class="tour-detail-form d-none">
+                    <form method="POST" class="post-form" id="tour_edit_form">
+                        {% csrf_token %}
+                        {{ t_form.media }}
+                        {{ t_form.as_p }}
+                        <div class="form-group d-flex justify-content-end">
+                            <button type="button" class="btn btn-sm btn-primary save-btn mr-2" id="tour_save_button">Save</button>
+                            <button type="button" class="btn btn-sm btn-dark" id="tour_cancel_button">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+
+                <hr class="mt-3 mb-1">
+
+                <div class="tour-others float-right d-flex flex-row justify-content-between mt-2">
+                    <div class="scenes text-center d-flex align-items-center">
+                        {% if tour.get_image_count == 0 %}
+                            <i class="fas fa-image"></i>
+                        {% else %}
+                            <i class="fas fa-image"></i>
+                        {% endif %}
+                        <span class="text-center ml-2 m-0">
+                            {{ tour.get_image_count }} Photos
+                        </span>
+                    </div>
+                    <div class="like text-center d-flex align-items-center">
+                        {% if tour.get_like_count == 0 %}
+                            <i class="far fa-thumbs-up"></i>
+                        {% else %}
+                            <i class="far fa-thumbs-up"></i>
+                        {% endif %}
+                        <span class="text-center ml-2 m-0">
+                            {{ tour.get_like_count }} Likes
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card m-3 p-2">
+                <div class="">
+                    <form method="POST" id="delete_tour_form" class="d-flex align-items-center" action="{% url 'tour.tour_delete' unique_id=tour.unique_id %}">
+                        {% csrf_token %}
+                        <div class="d-flex flex-row justify-content-between w-100">
+                            <div class="publish-guidebook text-center  ">
+                                {% if tour.is_published %}
+                                    <button type="button" class="btn btn-secondary" id="publish_swithch_tour">Unpublish</button>
+                                {% else %}
+                                    <button type="button" class="btn btn-success" id="publish_swithch_tour">Publish Now</button>
+                                {% endif %}
+                            </div>
+
+                            <div class="preview-tour text-center">
+                                <a href="{% url 'tour.tour_detail' unique_id=tour.unique_id %}">
+                                    <button type="button" class="btn btn-info">Preview</button>
+                                </a>
+                            </div>
+
+                            <div class="text-center delete-tour">
+                                <button type="button" id="delete_tour" class="btn btn-danger">Delete</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            {% if action == 'list' %}
+                <div class="pr-3 text-right ">
+                    <button type="button" class="btn btn-primary " onclick="switch_action('add')" >Add Sequence</button>
+                </div>
+            {% else %}
+                <div class="pr-3 text-right ">
+                    <button type="button" class="btn btn-primary " onclick="switch_action('list')" >Exit Add Sequence</button>
+                </div>
+            {% endif %}
+
+            {% if action == 'add' %}
+                <div class="ml-3 mb-2 mr-3">
+                    <h4>Filter Sequences</h4>
+                </div>
+                <div class="p-3 filter-box" style="border-top: 1px solid #dee2e6;">
+                    <div class="search-form">
+                        <form method="GET" class="post-form" id="search_form">
+                            <input type="number" class="d-none" name="page" value="{{ page }}">
+                            <input type="text" class="d-none" name="action" value="{{ action }}" />
+                            {{ form.media }}
+                            {{ form.as_p }}
+                            <div class="form-group text-right mt-3">
+                                <button type="submit" class="save btn btn-primary btn-search">Search</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+        {% include 'components/copyrite.html' %}
+    </div>
+    <div class="right-board list bg-light">
+        <div class="mt-4 mb-2 ml-auto mr-auto">
+            {% if action == 'list' %}
+                <div class="text-center mb-3">
+                    <h5>Tour Sequences</h5>
+                    You can reorder the sequences in tour.
+                </div>
+            {% else %}
+                <div class="text-center mb-3">
+                    <h5>Add Sequences to tour</h5>
+                    Choose which sequence you want to add tour
+                </div>
+            {% endif %}
+
+            <div class="paginator">
+                {% if sequences.has_other_pages %}
+                    <ul class="pagination justify-content-center">
+                        {% if sequences.number != 1 %}
+                            <li class="page-item">
+                                <a class="btn paginator-btn page-link" data-page='1'>&laquo;</a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled">
+                                <a class="btn page-link" href="#" tabindex="-1" aria-disabled="true">&laquo;</a>
+                            </li>
+                        {% endif %}
+                        {% for i in sequences.paginator.pages %}
+                            {% if sequences.number == i %}
+                                <li class="active page-item"><a class="btn paginator-btn page-link bg-info" data-page='{{ i }}'>{{ i }}</a></li>
+                            {% else %}
+                                <li><a class="btn paginator-btn page-link" data-page='{{ i }}'>{{ i }}</a></li>
+                            {% endif %}
+                        {% endfor %}
+                        {% if sequences.number != sequences.paginator.num_pages %}
+                            <li class="page-item"><a class="btn paginator-btn page-link" data-page='{{ sequences.paginator.num_pages }}'>&raquo;</a></li>
+                        {% else %}
+                            <li class="disabled page-item"><a class="btn page-link disabled" href="#">&raquo;</a></li>
+                        {% endif %}
+                    </ul>
+                {% endif %}
+            </div>
+
+            <div class="item-list {% if action == 'list' %}list_container{% endif %}">
+                {% if sequence_count > 0 %}
+                    {% for sequence in sequences %}
+                        <div class="{% if action == 'list' %}list_item{% endif %}">
+                            <div class="card row sequence p-1 m-3 d-flex flex-row align-items-center" id="sequence_{{ sequence.unique_id }}" data-sequence-id="{{ sequence.unique_id }}">
+                                <div class=" col-lg-4">
+                                    <div class="row align-items-center pr-1 pl-1">
+                                        <div class="col-sm-6 pl-1 pr-1">
+                                            <div class="min-map-box" id="map-{{ sequence.unique_id }}">
+                                            </div>
+                                        </div>
+
+                                        <div class="col-sm-6 pl-1 pr-1">
+                                            <div class="cover-image-box">
+                                                <div class="" style="position: relative">
+                                                    {% if sequence.get_cover_image is None %}
+                                                        <img class="w-100" src="{% static 'images/global/empty-1.png' %}">
+                                                    {% else %}
+                                                        <img class="w-100" src="https://images.mapillary.com/{{ sequence.get_cover_image }}/thumb-320.jpg">
+                                                    {% endif %}
+                                                    <div class="user-on-mapillary" >
+                                                        image by {{ sequence.username }} on mapillary
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                </div>
+
+                                <div class="detail-box col-lg-8">
+                                    <div class="item-detail-box mt-3 pl-3 pr-3">
+                                        <div class="item-main w-100 float-left">
+                                            <div class="item-title text-info d-flex flex-row justify-content-between">
+                                                <a href="{% url 'sequence.sequence_detail' unique_id=sequence.unique_id %}">
+                                                    <h6>{{ sequence.name }}</h6>
+                                                </a>
+                                            </div>
+
+                                            <div class="item-description">
+                                                <p class="mb-1">
+                                                    {{ sequence.get_short_description }}
+                                                </p>
+                                            </div>
+
+                                            <div class="w-100 d-flex flex-row align-items-end">
+                                                <p class="mb-1 mr-3 item-transport-type text-center">
+                                                    <i class="transport-type-icon fas fa-{{ sequence.transport_type.parent.icon.font_awesome }}"></i>
+                                                    <br>
+                                                    {{ sequence.transport_type.parent }}
+                                                </p>
+                                                <p class="mb-1 mr-3 item-transport-type text-center">
+                                                    <i class="transport-type-icon fas fa-{{ sequence.transport_type.icon.font_awesome }}"></i>
+                                                    <br>
+                                                    {{ sequence.transport_type.name }}
+                                                </p>
+                                                <p class="mb-1 mr-3 item-image-count text-center">
+                                                    <i class="transport-type-icon fas fa-image"></i>
+                                                    <br>
+                                                    {{ sequence.get_image_count }} Photos
+                                                </p>
+                                                <p class="mb-1 mr-3 item-distance text-center">
+                                                    <i class="transport-type-icon fas fa-ruler-horizontal"></i>
+                                                    <br>
+                                                    {{ sequence.get_distance }} Km
+                                                </p>
+                                                <a {% if sequence.tour_count > 0 %}href="{% url 'tour.tour_list' %}?sequence_unique_id={{ sequence.unique_id }}" {% endif %}>
+                                                    <p class="mb-1 item-tour-count text-center">
+                                                        <i class="fas fa-clipboard-list"></i>
+                                                        <br>
+                                                        {{ sequence.tour_count }} tours
+                                                    </p>
+                                                </a>
+                                            </div>
+
+                                            <div class="item-tag" style="min-height: 24px;">
+                                                {% for tag_name in sequence.get_tags %}
+                                                    <span class="tag pl-1 pr-1 mt-1 mb-1 mr-1">
+                                                        {{ tag_name }}
+                                                    </span>
+                                                {% endfor %}
+                                            </div>
+
+                                            <div class="item-user">
+                                                <a href="{% url 'account.profile' username=sequence.user.username %}">
+                                                    <span class="user">{{ sequence.user.username }}</span>
+                                                </a>
+                                            </div>
+
+                                        </div>
+                                    </div>
+                                    <div class="pl-3 pr-3 mt-3 text-center" style="font-size: 13px;">
+                                        <div class="d-flex flex-row justify-content-center  align-items-center text-right">
+                                            <a target="_blank" class="mr-2" href="https://www.openstreetmap.org/edit?editor=id#map=18/{{ sequence.get_first_point_lat }}/{{ sequence.get_first_point_lng }}&photo_overlay=mapillary">
+                                                <img style="width: 32px" src="{% static "images/icon/90606167-57892980-e1f7-11ea-96e7-ed01ef35b2b7.png" %}" />
+                                            </a>
+                                            {% if sequence.google_street_view is not None and sequence.google_street_view != '' %}
+{#                                                    <a class="mr-2" target="_blank" href="https://www.google.co.uk/maps/@{{ sequence.get_first_point_lat }},{{ sequence.get_first_point_lng }},14z">#}
+{#                                                        <img src="https://www.google.com/images/branding/product/ico/maps15_bnuw3a_32dp.ico"  alt=""/>#}
+{#                                                    </a>#}
+                                                    <a class="mr-2" target="_blank" href="{{ sequence.google_street_view }}">
+                                                        <img src="https://www.google.com/images/branding/product/ico/maps15_bnuw3a_32dp.ico"  alt=""/>
+                                                    </a>
+                                                {% endif %}
+                                            {% if not sequence.strava is None and sequence.strava != ''  %}
+                                                <a class="mr-2" target="_blank" href="https://www.strava.com/activities/{{ sequence.strava }}">
+                                                    <img style="width: 35px" src="https://a4k2d2q5.rocketcdn.me/wp-content/uploads/2018/02/Strava-Running-and-Cycling-GPS.png">
+                                                </a>
+                                            {% endif %}
+                                            <a target="_blank" class="" href="https://www.mapillary.com/app/?pKey={{ sequence.get_first_image_key }}&focus=photo">
+                                                <img style="width: 32px" src="https://encrypted-tbn0.gstatic.com/images?q=tbn%3AANd9GcQiTHrSFBxGdPFbRSCEXLo3IB1IzMS50F_V0Q&usqp=CAU">
+                                            </a>
+                                        </div>
+
+                                        <p class="mt-3">Captured at: {{ sequence.captured_at }}</p>
+{#                                        <p>Uploaded at: {{ sequence.created_at }}</p>#}
+                                        {% if not sequence.unique_id in t_sequence_ary %}
+                                            <button type="button" class="mt-2 btn btn-warning btn-sm" id="action_{{ sequence.unique_id }}" onclick="add_sequence_in_tour('{{ sequence.unique_id }}')">Add in Tour</button>
+                                        {% else %}
+                                            <button type="button" class="mt-2 btn btn-danger btn-sm" id="action_{{ sequence.unique_id }}" onclick="add_sequence_in_tour('{{ sequence.unique_id }}')">Remove from Tour</button>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="no-results d-flex justify-content-center align-items-center">
+                        <h5 class="text-info">No results match your criteria.</h5>
+                    </div>
+                {% endif %}
+            </div>
+            <div class="paginator">
+                {% if sequences.has_other_pages %}
+                    <ul class="pagination justify-content-center">
+                        {% if sequences.number != 1 %}
+                            <li class="page-item">
+                                <a class="btn paginator-btn page-link" data-page='1'>&laquo;</a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled">
+                                <a class="btn page-link" href="#" tabindex="-1" aria-disabled="true">&laquo;</a>
+                            </li>
+                        {% endif %}
+                        {% for i in sequences.paginator.pages %}
+                            {% if sequences.number == i %}
+                                <li class="active page-item"><a class="btn paginator-btn page-link bg-info" data-page='{{ i }}'>{{ i }}</a></li>
+                            {% else %}
+                                <li><a class="btn paginator-btn page-link" data-page='{{ i }}'>{{ i }}</a></li>
+                            {% endif %}
+                        {% endfor %}
+                        {% if sequences.number != sequences.paginator.num_pages %}
+                            <li class="page-item"><a class="btn paginator-btn page-link" data-page='{{ sequences.paginator.num_pages }}'>&raquo;</a></li>
+                        {% else %}
+                            <li class="disabled page-item"><a class="btn page-link disabled" href="#">&raquo;</a></li>
+                        {% endif %}
+                    </ul>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $.ajaxSetup({
+        data: {csrfmiddlewaretoken: '{{ csrf_token }}' },
+    });
+    $('.paginator-btn').click(function() {
+        let pageNum = $(this).data('page');
+        let url = setParamInURL('page', pageNum);
+        location.assign(url);
+    });
+    function switch_action(action) {
+        if (action == 'list')
+        {
+            var url = "{% url 'tour.tour_add_sequence' unique_id=tour.unique_id %}?action=list"
+            window.location.assign(url);
+        }
+        else {
+            var url = "{% url 'tour.tour_add_sequence' unique_id=tour.unique_id %}?action=add"
+            window.location.assign(url);
+        }
+
+    }
+    function add_sequence_in_tour(unique_id) {
+        $.ajax({
+            url: "{% url 'tour.ajax_change_tour_seq' unique_id=tour.unique_id %}",
+            type: 'POST',
+            data: {'sequence_unique_id': unique_id},
+            dataType: 'json',
+            success: function (data) {
+                if (data.status == 'failed')
+                    toastr.error(data.message);
+                else {
+                        {% if action == 'list' %}
+                            location.reload();
+                        {% else %}
+                            toastr.success(data.message);
+                            if (data.action == 'added')
+                            {
+                                $('#action_' + unique_id).removeClass('btn-warning').addClass('btn-danger').text('Remove from Tour');
+                            }
+                            else {
+                                $('#action_' + unique_id).addClass('btn-warning').removeClass('btn-danger').text('Add in Tour');
+                            }
+                        {% endif %}
+                }
+            }
+        });
+    }
+    mapboxgl.accessToken = mapboxToken;
+    var positions = [];
+    {% for sequence in sequences %}
+        positions.push({{ sequence.geometry_coordinates_ary }});
+    {% endfor %}
+
+    var map_ary = [];
+    function draw_map(data) {
+        var obj = $('.min-map-box').eq(i);
+        var obj_id = obj.attr('id');
+        var sceneData = [];
+        var item = {};
+        var scene_positions = [];
+        for (var j = 0; j < data.length; j++)
+        {
+            var lat = data[j][1];
+            var lng = data[j][0];
+            scene_positions.push([lng, lat]);
+            item = {
+                "type": "Feature",
+                "properties": {},
+                "geometry": {
+                    "coordinates": [lng, lat],
+                    "type": "Point"
+                }
+            };
+            sceneData.push(item);
+        }
+
+        if (scene_positions.length > 0)
+            var first_point = scene_positions[0];
+        else
+            var first_point = null;
+
+        console.log('positions', sceneData)
+        if (first_point != null) {
+            var map = new mapboxgl.Map({
+                container: obj_id, // container id
+                style: 'mapbox://styles/mapbox/streets-v11', //hosted style id
+                center: first_point, // starting position
+                zoom: 12, // starting zoom
+            });
+        }
+        else {
+            var map = new mapboxgl.Map({
+                container: obj_id, // container id
+                style: 'mapbox://styles/mapbox/streets-v11', //hosted style id
+                center: [-87.622088, 41.878781], // starting position
+                zoom: 12, // starting zoom
+            });
+        }
+        map.on('load', function() {
+            map.addSource('points', {
+                'type': 'geojson',
+                'data': {
+                    'type': 'FeatureCollection',
+                    'features': sceneData
+                }
+            });
+            map.addLayer({
+                'id': 'mapillary-images',
+                'type': 'circle',
+                'source': 'points',
+                "paint": {
+                    "circle-color": "#039825",
+                    "circle-radius": 6
+                }
+            });
+        });
+        map_ary.push(map);
+        map.resize();
+    }
+
+    for (i = 0; i < positions.length; i++)
+    {
+        draw_map(positions[i])
+    }
+
+    {% if action == 'list' %}
+        function getPos(a, b) { // a == topPos, b == selectionHeight
+            return Math.round((a / b) + 1);
+        }
+
+        function moveThings(a, b, c) { // a == oldPos, b == newPos, c == selectedHeight
+            var first = 'item_' + (b - 1);
+            var $newEl = $('.list_container .' + first);
+
+            if (a < b) { // oldPos less than newPos
+                var second = 'item_' + (b - 2);
+                var newTop = parseInt($newEl.css('top')) - c;
+            } else { // oldPos more than newPos
+                var second = 'item_' + b;
+                var newTop = parseInt($newEl.css('top')) + c;
+            }
+
+            $newEl.css('top', parseInt($newEl.css('top')));
+            $newEl.removeClass(first);
+            $newEl.animate({
+                top: newTop
+            }, 300, function () {
+                $newEl.removeAttr('style');
+            });
+            $newEl.addClass(second);
+
+            return false; // Cleans up animations
+        }
+
+        function setNewClass(e, a) { // e == selected element, a == newPos
+            e.attr('class', 'list_item').addClass('item_' + (a - 1));
+        }
+
+        var item_list = [];
+
+        var margin = 0;
+        var margin_top = 0;
+        var $el;
+        var oldPos = 0;
+        var newPos = 0;
+        var dragging = false;
+
+        var classInfo = '';
+        var item_count = 0;
+        if (document.getElementsByClassName('list_item ')[0] == undefined)
+            var selectionHeight = 100;
+        else
+            var selectionHeight = document.getElementsByClassName('list_item ')[0].clientHeight;
+        if (selectionHeight > 620)
+            selectionHeight = 746
+        else if (selectionHeight <= 620 && selectionHeight > 400)
+            selectionHeight = 420
+        else
+            selectionHeight = 230
+        for (var i = 0; i < 200; i ++) {
+            classInfo += '.' + 'item_' + i + ' {top: ' + (margin_top + i * selectionHeight) + 'px;}\n';
+        }
+        var style = document.createElement('style');
+        style.type = 'text/css';
+        style.innerHTML = classInfo;
+        document.getElementsByTagName('head')[0].appendChild(style);
+        var order_ary = [];
+        var old_item_class = '';
+        function  reorder_scene() {
+
+            item_count = $('.list_container .list_item').length;
+            $('.list_container').height(selectionHeight * item_count);
+            item_list = [];
+            for (var i = 0; i < order_ary.length; i++)
+            {
+                if (typeof $('.list_item.item_' + i).html() != "undefined")
+                    item_list.push($('.list_item.item_' + i).html())
+            }
+
+            $('.list_container .list_item').each(function (index) {
+                $(this).attr('class', 'list_item');
+                $(this).attr('style', '');
+                $(this).addClass('item_' + index);
+                if (typeof item_list[index] != "undefined")
+                {
+                    console.log('test');
+                    $(this).html(item_list[index]);
+                }
+            });
+
+            $('.scene-box').off('click');
+            $('.scene-box').click(function () {
+                var image_key = $(this).data('image_key');
+                mapillaryViewer.moveToKey(image_key);
+            });
+
+            $('.list_item').off('mousedown');
+            $('.list_item').mousedown(function (ev) {
+                $el = $(this);
+                old_item_class = $(this).attr('class');
+                oldPos = $el.index() + 1;
+                newPos = oldPos;
+                dragging = true;
+                startY = ev.clientY;
+                startT = parseInt($el.css('top'));
+                $el.addClass('selected');
+            });
+
+            $('.point_list').off('click');
+            $('.point_list').click(function () {
+                var scene_id = $(this).attr('data-scene-id');
+                $('.left-side.poi-box').removeClass('d-none');
+                if ($('#mapillary_image_box').parent().hasClass('small-screen'))
+                    $('#mapillary_image_box').parent().find('.switch-full-screen').trigger('click');
+                $('.full-screen').addClass('board-w-400');
+                if(!$('.minimize-button').hasClass('d-none'))
+                    $('.minimize-button').trigger('click');
+                mapillaryViewer.resize();
+                map.resize();
+            });
+        }
+
+        $(window).mousemove(function (ev) {
+            if (dragging) {
+                $el.attr('class', 'list_item')
+                $el.addClass('selected');
+
+                // ----- calculate new top
+                var newTop = startT + (ev.clientY - startY);
+                $el.css('cursor', 'pointer');
+                // ------
+
+                //------ stay in parent
+                var maxTop = $el.parent().height() - $el.height();
+                newTop = newTop < 0 ? 0 : newTop > maxTop ? maxTop : newTop;
+                $el.css('top', newTop);
+                //------
+
+                newPos = getPos(newTop, selectionHeight);
+
+                if (oldPos != newPos) {
+                    moveThings(oldPos, newPos, selectionHeight);
+                    oldPos = newPos;
+                }
+            }
+        }).mouseup(function (ev) {
+            if (dragging) {
+                $el.attr('class', 'list_item')
+                $el.addClass('selected');
+
+                // ----- calculate new top
+                var newTop = startT + (ev.clientY - startY);
+                $el.css('cursor', 'pointer');
+                // ------
+
+                //------ stay in parent
+                var maxTop = $el.parent().height() - $el.height();
+                newTop = newTop < 0 ? 0 : newTop > maxTop ? maxTop : newTop;
+                $el.css('top', newTop);
+                //------
+
+                newPos = getPos(newTop, selectionHeight);
+
+                if (oldPos != newPos) {
+                    moveThings(oldPos, newPos, selectionHeight);
+                    oldPos = newPos;
+                }
+                dragging = false;
+                $el.removeClass('selected');
+                setNewClass($el, newPos);
+                $el.css('top', (newPos - 1) * selectionHeight);
+
+                var order_list = '';
+                var scene_id = 0;
+                order_ary = [];
+                for (var i = 0; i < item_count; i++) {
+                    scene_id = $('.list_item.item_' + i).find('.sequence').attr('data-sequence-id');
+                    if (order_list == '')
+                        order_list = scene_id;
+                    else
+                        order_list += "," + scene_id;
+                    order_ary.push(scene_id);
+                }
+                if ($el.attr('class') != old_item_class)
+                    $.ajax({
+                        url: '{% url "tour.ajax_order_sequence" unique_id=tour.unique_id %}',
+                        type: 'POST',
+                        data: {'order_list': order_list},
+                        dataType: 'json',
+                        success: function (data) {
+                            if (data.status == 'failed')
+                                toastr.error(data.message);
+                            else
+                            {
+                                toastr.success(data.message);
+                            }
+                        }
+                    });
+            }
+        });
+
+        reorder_scene();
+    {% endif %}
+
+    $('#edit_button').click(function () {
+        $('.tour-detail').addClass('d-none');
+        $('.tour-detail-form').removeClass('d-none');
+    });
+    $('#tour_cancel_button').click(function () {
+        $('.tour-detail-form').addClass('d-none');
+        $('.tour-detail').removeClass('d-none');
+    });
+    $('#tour_save_button').click(function () {
+         $.ajax({
+            url: "{% url 'tour.ajax_tour_update' unique_id=tour.unique_id %}",
+            type: 'POST',
+            data: $('#tour_edit_form').serialize(),
+            dataType: 'json',
+            success: function (data) {
+                if (data.status == 'failed')
+                    toastr.error(data.message);
+                else
+                {
+                    toastr.success(data.message);
+                    var tour = data.tour;
+                    $('.tour-detail .tour-name').html('<h3>' + tour.name + '</h3>');
+                    $('.tour-detail .tour-description').html('<p class="mb-1">' + tour.description + '</p>');
+                    var html = '';
+                    for (var i = 0; i < tour.tag.length; i++) {
+                        html += '<span class="tag">' + tour.tag[i] + '</span>';
+                    }
+                    $('.tour-detail .tour-tag').html(html);
+                    $('.tour-detail').removeClass('d-none');
+                    $('.tour-detail-form').addClass('d-none');
+                }
+            }
+        });
+    });
+
+    $('#publish_swithch_tour').click(function () {
+        $.ajax({
+            url: "{% url 'tour.ajax_tour_check_publish' unique_id=tour.unique_id %}",
+            type: 'POST',
+            data: {},
+            dataType: 'json',
+            success: function (data) {
+                if (data.status == 'failed')
+                {
+                    toastr.error(data.message)
+                }
+                else {
+                    if (data.is_published)
+                    {
+                        $('#publish_swithch_tour').removeClass('btn-success').addClass('btn-secondary').text('Unpublish');
+                    }
+                    else
+                    {
+                        $('#publish_swithch_tour').addClass('btn-success').removeClass('btn-secondary').text('Publish Now');
+                    }
+                }
+            }
+        });
+    });
+
+    $('#delete_tour').click(function () {
+        if ($(this).hasClass('disabled') || $(this).hasClass('d-none'))
+            return;
+        Swal.fire({
+            title: 'Are you sure?',
+            text: "You won't be able to revert this!",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Yes, delete it!'
+        }).then((result) => {
+            if (result.value) {
+                 $('#delete_tour_form').submit();
+            }
+        })
+    });
+
+</script>
+{% endblock %}

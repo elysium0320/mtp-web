@@ -1,0 +1,21 @@
+<div class="list_item">
+    <div class="scene-box p-1 mt-2 mb-2" id="scene_{{ scene.pk }}" data-scene-id="{{ scene.pk }}" data-image_key="{{ scene.image_key }}" style="cursor: pointer">
+        <form method="POST" class="post-form has-validation-callback" id="add_scene_form_{{ scene.pk }}">
+            {% csrf_token %}
+            <input type="number" name="scene_id" class="d-none" value="{{ scene.pk }}" id="id_scene_id">
+            <input type="text" name="image_key" class="form-control d-none" value="{{ scene.image_key }}" required="" id="id_image_key">
+            <input type="text" name="title" class="form-control mb-1" disabled="disabled" value="{{ scene.title }}" placeholder="Scene Title" required="" id="id_title">
+            <textarea name="description" cols="40" rows="3" disabled class="form-control mb-1" placeholder="Scene Description" style="resize: none;" id="id_description">{{ scene.description }}</textarea>
+            <input type="text" name="lat" class="form-control d-none" value="{{ scene.lat }}" required="" id="id_lat">
+            <input type="text" name="lng" class="form-control d-none" value="{{ scene.lng }}" required="" id="id_lng">
+            <input type="text" name="start_x" class="form-control d-none" value="{{ scene.start_x }}" required="" id="id_start_x">
+            <input type="text" name="start_y" class="form-control d-none" value="{{ scene.start_y }}" required="" id="id_start_y">
+            <div class="text-right">
+                <button type="button" class="btn btn-sm btn-info point_list" onclick="showPOIList('{{ scene.pk }}')" data-scene-id="{{ scene.pk }}">Edit POI's ({{ scene.get_poi_count }})</button>
+                <button type="button" id="change_scene_button" class="save btn btn-sm btn-warning change-btn" onclick="enable_scene_form({{ scene.pk }})">Edit Scene</button>
+                <button type="button" id="save_scene_button" class="save btn btn-sm btn-primary save-btn d-none" onclick="saveScene('{% url "guidebook.ajax_add_scene" unique_id=guidebook.unique_id %}', {{ scene.pk }})">Save</button>
+                <button type="button" class="btn btn-sm btn-danger delete_scene_button" data-scene-id="{{ scene.pk }}">Delete</button>
+            </div>
+        </form>
+    </div>
+</div>

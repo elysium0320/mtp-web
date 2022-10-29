@@ -1,0 +1,21 @@
+{% extends 'layouts/base.html' %}
+{% load static %}
+{% block app_tour %}active{% endblock %}
+{% block app_style %}<link rel="stylesheet" href="{% static 'css/sequence_style.css' %}">{% endblock %}
+{% block content %}
+<div class="main-body">
+    <div class="w-100 mt-5 d-flex justify-content-center">
+        <div class="p-3" style="width: 400px;">
+            <form method="POST" class="post-form w-100" id="tour_create_form" enctype="multipart/form-data">
+                {% csrf_token %}
+                {{ form.media }}
+                {{ form.as_p }}
+                <div class="form-group d-flex justify-content-between">
+                    <button type="button" class="btn btn-info" onclick="window.history.back()">Back</button>
+                    <button type="submit" class="save btn btn-primary save-btn">Continue</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
